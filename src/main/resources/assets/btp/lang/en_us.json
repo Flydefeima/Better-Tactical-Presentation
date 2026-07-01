@@ -1,0 +1,20 @@
+{
+  "key.btp.toggle_lean": "Toggle Aim/Lean Mode",
+  "key.categories.btp": "Better Tactical Presentation",
+  "message.btp.mode.aim": "Aim Mode",
+  "message.btp.mode.lean": "Lean Mode",
+  "message.btp.cooldown": "Cooldown, please wait %d seconds",
+  "message.btp.cooldown_start": "Long press triggered cooldown, %d seconds until next toggle",
+  "message.btp.aim_on": "Aim Mode",
+  "message.btp.aim_off": "Normal Mode",
+  "message.btp.lean_on": "Tactical Lean",
+
+  "config.btp.interruptOnToggle": "Interrupt on Toggle",
+  "config.btp.longPressThreshold": "Long Press Threshold",
+  "config.btp.cooldownDuration": "Cooldown Duration",
+  "config.btp.enableLongPressLean": "Enable Right-Click Long Press Lean",
+  "config.btp.disableVanillaCrouchLean": "Disable Vanilla Crouch Lean",
+  "config.btp.showLongPressLeanMessages": "Show Right-Click Lean Messages",
+  "config.btp.longPressTriggersToggle": "Long Press Triggers Toggle",
+  "config.btp.breakSprint": "Break Sprint"
+}
