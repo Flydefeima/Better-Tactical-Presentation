@@ -18,7 +18,7 @@ Press **B** to enter tactical lean mode. While leaning and firing, bullet spread
 
 ```toml
 [general]
-# Lean spread multiplier (0.0 ~ 2.0, default 1.0 = no change)
+# Lean spread multiplier (0.0 ~ 2.0, default 0.5 = no change)
 # < 1.0 narrows spread, > 1.0 widens spread
 # 据枪时子弹散布倍率，< 1.0 缩窄散布，> 1.0 增大散布
 leanSpreadMultiplier = 1.0
