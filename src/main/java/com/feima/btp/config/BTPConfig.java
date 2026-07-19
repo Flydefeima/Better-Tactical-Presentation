@@ -69,7 +69,7 @@ public class BTPConfig {
         LEAN_SPREAD_MULTIPLIER = builder
                 .comment("战术据枪时子弹散布倍率（0.0~2.0，默认1.0不变）。小于1.0缩小散布提高精度，大于1.0增大散布。")
                 .translation("config.btp.leanSpreadMultiplier")
-                .defineInRange("leanSpreadMultiplier", 1.0, 0.0, 2.0);
+                .defineInRange("leanSpreadMultiplier", 0.5, 0.0, 2.0);
 
         builder.pop();
         SPEC = builder.build();
