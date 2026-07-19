@@ -1,0 +1,16 @@
+/.idea/
+/run/
+/net/
+/build/
+/.gradle/
+/libs/tacz_temp/
+/libs/tacz_work/
+/libs/tacz_bugcheck/
+/libs/tacz_search/
+/libs/tacz_orig.jar
+/libs/tacz-*.jar
+/libs/\[*\]*.jar
+/libs/tacz/tacz/1.1.8-hotfix/tacz-1.1.8-hotfix.pom
+*.bat
+AGENTS.md
+RELEASE_NOTES.md

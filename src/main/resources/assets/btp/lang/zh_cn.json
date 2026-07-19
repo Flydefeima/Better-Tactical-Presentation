@@ -1,0 +1,21 @@
+{
+  "key.btp.toggle_lean": "切换瞄准/倾斜模式",
+  "key.categories.btp": "更好的战术据枪",
+  "message.btp.mode.aim": "瞄准模式",
+  "message.btp.mode.lean": "倾斜模式",
+  "message.btp.cooldown": "冷却中，请等待 %d 秒",
+  "message.btp.cooldown_start": "长按触发冷却，%d 秒内无法切换",
+  "message.btp.aim_on": "开镜模式",
+  "message.btp.aim_off": "普通模式",
+  "message.btp.lean_on": "战术据枪",
+
+  "config.btp.interruptOnToggle": "打断切换",
+  "config.btp.longPressThreshold": "长按判定时间",
+  "config.btp.cooldownDuration": "冷却时长",
+  "config.btp.enableLongPressLean": "启用右键长按据枪",
+  "config.btp.disableVanillaCrouchLean": "禁用原版蹲下据枪",
+  "config.btp.showLongPressLeanMessages": "显示右键据枪提示",
+  "config.btp.longPressTriggersToggle": "长按触发切换",
+  "config.btp.breakSprint": "打断疾跑",
+  "config.btp.leanSpreadMultiplier": "据枪散布倍率"
+}

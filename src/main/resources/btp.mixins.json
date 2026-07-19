@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.feima.btp.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "btp.refmap.json",
+  "mixins": [
+    "GunAnimationStateContextMixin",
+    "CacheValueMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

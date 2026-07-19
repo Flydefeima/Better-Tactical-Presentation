@@ -1,0 +1,90 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '6.+'
+    id 'org.spongepowered.mixin' version '0.7.+'
+}
+
+ext {
+    minecraft_version = '1.20.1'
+    forge_version = '47.3.0'
+}
+
+group = 'com.feima.btp'
+version = '1.3.1'
+archivesBaseName = 'BetterTacticalPresentation-forge'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.mojang_level', 'debug'
+            mods {
+                btp {
+                    source sourceSets.main
+                }
+            }
+        }
+        server {
+            workingDirectory project.file('run/server')
+            property 'forge.logging.mojang_level', 'debug'
+            mods {
+                btp {
+                    source sourceSets.main
+                }
+            }
+        }
+        data {
+            workingDirectory project.file('run')
+            property 'forge.logging.mojang_level', 'debug'
+            args '--mod', 'btp', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            mods {
+                btp {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+mixin {
+    add sourceSets.main, 'btp.refmap.json'
+    config 'btp.mixins.json'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = uri('libs') }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    implementation fg.deobf('tacz:tacz:1.1.8-hotfix')
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    manifest {
+        attributes([
+                "Specification-Title"     : "btp",
+                "Specification-Vendor"    : "Feima",
+                "Specification-Version"   : "1",
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : project.version,
+                "Implementation-Vendor"   : "Feima",
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                "MixinConfigs"            : "btp.mixins.json",
+                "License"                 : "GNU GPL 3.0"
+        ])
+    }
+}
+
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+}
