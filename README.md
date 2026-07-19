@@ -1,4 +1,3 @@
-```markdown
 # Better Tactical Presentation
 
 | Right-click Long Press Lean (if enabled) | Right-click | Short press toggles ADS, long press triggers lean |
@@ -7,7 +6,7 @@
 
 ---
 
-## 概述 / 概述
+##  Overview/ 概述
 
 **Better Tactical Presentation** is a client-side enhancement mod for [TACZ (Timeless and Classics Zero)]. It improves the tactical leaning experience by intercepting mouse events and using Mixins to provide two flexible operation modes.
 
