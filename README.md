@@ -41,11 +41,12 @@ Config file: `.minecraft/config/btp-client.toml`
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `interruptOnToggle` | boolean | `false` | Instantly interrupt current action when toggling modes |
-| `longPressThreshold` | integer | `450` | Long press detection time (milliseconds) |
+| `longPressThreshold` | integer | `200` | Long press detection time (milliseconds) |
 | `enableLongPressLean` | boolean | `false` | Enable right-click long press lean (disables `B` toggle) |
 | `disableVanillaCrouchLean` | boolean | `true` | Disable TACZ's default crouch-to-lean behavior |
 | `showLongPressLeanMessages` | boolean | `true` | Show screen messages for right-click long press lean |
 | `breakSprint` | boolean | `true` | Force disable sprinting while leaning |
+| `compatTaczLabsCrosshair` | boolean | `true` | If enabled, TaCZ:Labs crosshair will auto-hide when leaning. |
 
 ## Dependencies / 依赖要求
 
