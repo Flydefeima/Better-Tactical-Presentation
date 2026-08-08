@@ -1,5 +1,6 @@
 package com.feima.btp.config;
 
+import com.feima.btp.BTPLog;
 import com.feima.btp.BTPMod;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.common.Mod;
@@ -14,69 +15,69 @@ public class BTPConfig {
     public static final ForgeConfigSpec SPEC;
     public static final ForgeConfigSpec.BooleanValue INTERRUPT_ON_TOGGLE;
     public static final ForgeConfigSpec.IntValue LONG_PRESS_THRESHOLD;
-    public static final ForgeConfigSpec.IntValue COOLDOWN_DURATION;
     public static final ForgeConfigSpec.BooleanValue ENABLE_LONG_PRESS_LEAN;
     public static final ForgeConfigSpec.BooleanValue DISABLE_VANILLA_CROUCH_LEAN;
     public static final ForgeConfigSpec.BooleanValue SHOW_LONG_PRESS_LEAN_MESSAGES;
-    public static final ForgeConfigSpec.BooleanValue LONG_PRESS_TRIGGERS_TOGGLE;
     public static final ForgeConfigSpec.BooleanValue BREAK_SPRINT;
+    public static final ForgeConfigSpec.DoubleValue LEAN_SPREAD_MULTIPLIER;
+    public static final ForgeConfigSpec.BooleanValue COMPAT_TACZLABS_CROSSHAIR;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
-        builder.comment("Better Tactical Presentation 设置").push("general");
+        builder.comment("Better Tactical Presentation Settings").push("general");
 
         INTERRUPT_ON_TOGGLE = builder
-                .comment("如果开启，切换模式时会立即停止当前动作（瞄准或倾斜），而不会在右键按住时自动进入新模式。关闭则无缝衔接。")
+                .comment("If enabled, toggling mode will instantly stop current action (aiming or leaning) instead of auto-entering new mode while right-click is held. Disabled for seamless transition.")
                 .translation("config.btp.interruptOnToggle")
                 .define("interruptOnToggle", false);
 
         LONG_PRESS_THRESHOLD = builder
-                .comment("长按判定时间（毫秒），用于切换键长按和右键长按据枪。")
+                .comment("Right-click long press threshold in milliseconds for lean detection. Only effective when enableLongPressLean is enabled.")
                 .translation("config.btp.longPressThreshold")
-                .defineInRange("longPressThreshold", 450, 100, 2000);
-
-        COOLDOWN_DURATION = builder
-                .comment("长按切换键后触发的冷却时长（毫秒）。设为 0 可禁用冷却。")
-                .translation("config.btp.cooldownDuration")
-                .defineInRange("cooldownDuration", 3000, 0, 10000);
+                .defineInRange("longPressThreshold", 200, 50, 2000);
 
         ENABLE_LONG_PRESS_LEAN = builder
-                .comment("开启后，切换键被禁用，右键短按切换开镜，长按进入战术据枪（倾斜）。")
+                .comment("If enabled, toggle key is disabled. Right-click short press toggles aim, long press enters tactical lean.")
                 .translation("config.btp.enableLongPressLean")
                 .define("enableLongPressLean", false);
 
         DISABLE_VANILLA_CROUCH_LEAN = builder
-                .comment("开启后，玩家蹲下时枪械不会自动倾斜（禁用 TACZ 原版的蹲下战术据枪）。")
+                .comment("If enabled, gun will not auto-lean when crouching (disables TACZ vanilla crouch lean).")
                 .translation("config.btp.disableVanillaCrouchLean")
                 .define("disableVanillaCrouchLean", true);
 
         SHOW_LONG_PRESS_LEAN_MESSAGES = builder
-                .comment("开启后，在右键长按据枪模式下显示开镜/关镜/据枪提示消息。")
+                .comment("If enabled, shows aim on/off and lean on messages in right-click long press lean mode.")
                 .translation("config.btp.showLongPressLeanMessages")
                 .define("showLongPressLeanMessages", true);
 
-        LONG_PRESS_TRIGGERS_TOGGLE = builder
-                .comment("开启后，切换键长按达到阈值会触发一次模式切换并进入冷却；关闭则长按只触发冷却，不切换。")
-                .translation("config.btp.longPressTriggersToggle")
-                .define("longPressTriggersToggle", false);
-
         BREAK_SPRINT = builder
-                .comment("开启后，战术据枪状态下会强制打断疾跑。")
+                .comment("If enabled, sprint is forcefully disabled while in tactical lean state.")
                 .translation("config.btp.breakSprint")
                 .define("breakSprint", true);
+
+        LEAN_SPREAD_MULTIPLIER = builder
+                .comment("Spread multiplier while leaning (0.0~2.0, default 1.0). Below 1.0 improves accuracy, above 1.0 increases spread.")
+                .translation("config.btp.leanSpreadMultiplier")
+                .defineInRange("leanSpreadMultiplier", 0.3, 0.0, 2.0);
+
+        COMPAT_TACZLABS_CROSSHAIR = builder
+                .comment("If enabled, TaCZ:Labs crosshair will auto-hide when leaning.")
+                .translation("config.btp.compatTaczLabsCrosshair")
+                .define("compatTaczLabsCrosshair", true);
 
         builder.pop();
         SPEC = builder.build();
     }
 
     public static boolean interruptOnToggle = false;
-    public static int longPressThreshold = 450;
-    public static int cooldownDuration = 3000;
+    public static int longPressThreshold = 200;
     public static boolean enableLongPressLean = false;
     public static boolean disableVanillaCrouchLean = true;
     public static boolean showLongPressLeanMessages = true;
-    public static boolean longPressTriggersToggle = false;
     public static boolean breakSprint = true;
+    public static double leanSpreadMultiplier = 0.3;
+    public static boolean compatTaczLabsCrosshair = true;
 
     @SubscribeEvent
     public static void onConfigLoad(ModConfigEvent.Loading event) {
@@ -96,20 +97,18 @@ public class BTPConfig {
     private static void reloadConfig() {
         interruptOnToggle = INTERRUPT_ON_TOGGLE.get();
         longPressThreshold = LONG_PRESS_THRESHOLD.get();
-        cooldownDuration = COOLDOWN_DURATION.get();
         enableLongPressLean = ENABLE_LONG_PRESS_LEAN.get();
         disableVanillaCrouchLean = DISABLE_VANILLA_CROUCH_LEAN.get();
         showLongPressLeanMessages = SHOW_LONG_PRESS_LEAN_MESSAGES.get();
-        longPressTriggersToggle = LONG_PRESS_TRIGGERS_TOGGLE.get();
         breakSprint = BREAK_SPRINT.get();
-        System.out.println("[BTP] 配置加载: interruptOnToggle=" + interruptOnToggle +
-                ", longPressThreshold=" + longPressThreshold +
-                ", cooldownDuration=" + cooldownDuration +
-                ", enableLongPressLean=" + enableLongPressLean +
-                ", disableVanillaCrouchLean=" + disableVanillaCrouchLean +
-                ", showLongPressLeanMessages=" + showLongPressLeanMessages +
-                ", longPressTriggersToggle=" + longPressTriggersToggle +
-                ", breakSprint=" + breakSprint);
+        leanSpreadMultiplier = LEAN_SPREAD_MULTIPLIER.get();
+        compatTaczLabsCrosshair = COMPAT_TACZLABS_CROSSHAIR.get();
+        BTPLog.LOGGER.info("Config loaded: interruptOnToggle={}, longPressThreshold={}, " +
+                        "enableLongPressLean={}, disableVanillaCrouchLean={}, showLongPressLeanMessages={}, " +
+                        "breakSprint={}, leanSpreadMultiplier={}, compatTaczLabsCrosshair={}",
+                interruptOnToggle, longPressThreshold, enableLongPressLean,
+                disableVanillaCrouchLean, showLongPressLeanMessages,
+                breakSprint, leanSpreadMultiplier, compatTaczLabsCrosshair);
     }
 
     private static void ensureConfigFileExists(Path configPath) {
@@ -117,31 +116,31 @@ public class BTPConfig {
             if (!Files.exists(configPath)) {
                 Files.createDirectories(configPath.getParent());
                 String defaultConfig = """
-                        #Better Tactical Presentation 设置
+                        #Better Tactical Presentation Settings
 
                         [general]
-                        \t#如果开启，切换模式时会立即停止当前动作（瞄准或倾斜），而不会在右键按住时自动进入新模式。关闭则无缝衔接。
+                        \t#If enabled, toggling mode will instantly stop current action (aiming or leaning) instead of auto-entering new mode while right-click is held. Disabled for seamless transition.
                         \tinterruptOnToggle = false
-                        \t#长按判定时间（毫秒），用于切换键长按和右键长按据枪。
-                        \tlongPressThreshold = 450
-                        \t#长按切换键后触发的冷却时长（毫秒）。设为 0 可禁用冷却。
-                        \tcooldownDuration = 3000
-                        \t#开启后，切换键被禁用，右键短按切换开镜，长按进入战术据枪（倾斜）。
+                        \t#Right-click long press threshold in milliseconds for lean detection. Only effective when enableLongPressLean is enabled.
+                        \tlongPressThreshold = 200
+                        \t#If enabled, toggle key is disabled. Right-click short press toggles aim, long press enters tactical lean.
                         \tenableLongPressLean = false
-                        \t#开启后，玩家蹲下时枪械不会自动倾斜（禁用 TACZ 原版的蹲下战术据枪）。
+                        \t#If enabled, gun will not auto-lean when crouching (disables TACZ vanilla crouch lean).
                         \tdisableVanillaCrouchLean = true
-                        \t#开启后，在右键长按据枪模式下显示开镜/关镜/据枪提示消息。
+                        \t#If enabled, shows aim on/off and lean on messages in right-click long press lean mode.
                         \tshowLongPressLeanMessages = true
-                        \t#开启后，切换键长按达到阈值会触发一次模式切换并进入冷却；关闭则长按只触发冷却，不切换。
-                        \tlongPressTriggersToggle = false
-                        \t#开启后，战术据枪状态下会强制打断疾跑。
+                        \t#If enabled, sprint is forcefully disabled while in tactical lean state.
                         \tbreakSprint = true
+                        \t#Spread multiplier while leaning (0.0~2.0, default 1.0). Below 1.0 improves accuracy, above 1.0 increases spread.
+                        \tleanSpreadMultiplier = 1.0
+                        \t#If enabled, TaCZ:Labs crosshair will auto-hide when leaning.
+                        \tcompatTaczLabsCrosshair = true
                         """;
                 Files.writeString(configPath, defaultConfig);
-                System.out.println("[BTP] 已创建默认配置文件: " + configPath);
+                BTPLog.LOGGER.info("Default config file created: {}", configPath);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            BTPLog.LOGGER.warn("Failed to create default config file: {}", e.getMessage());
         }
     }
 }

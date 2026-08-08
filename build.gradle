@@ -5,11 +5,11 @@ plugins {
 
 ext {
     minecraft_version = '1.20.1'
-    forge_version = '47.3.0'   // 请替换为你实际的 Forge 版本
+    forge_version = '47.3.0'
 }
 
 group = 'com.feima.btp'
-version = '1.2.4'
+version = '1.4.0'
 archivesBaseName = 'BetterTacticalPresentation-forge'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -56,6 +56,9 @@ mixin {
 
 repositories {
     mavenCentral()
+    flatDir {
+        dirs 'libs'
+    }
 }
 
 dependencies {
@@ -78,7 +81,8 @@ jar {
                 "Implementation-Version"  : project.version,
                 "Implementation-Vendor"   : "Feima",
                 "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                "MixinConfigs"            : "btp.mixins.json"
+                "MixinConfigs"            : "btp.mixins.json",
+                "License"                 : "GNU GPL 3.0"
         ])
     }
 }

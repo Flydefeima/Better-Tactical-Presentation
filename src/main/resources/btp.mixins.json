@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "btp.refmap.json",
   "mixins": [
-    "GunAnimationStateContextMixin"
+    "GunAnimationStateContextMixin",
+    "CacheValueMixin"
   ],
   "client": [],
   "server": [],

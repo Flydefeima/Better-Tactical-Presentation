@@ -1,12 +1,12 @@
 modLoader="javafml"
 loaderVersion="[47,)"
-license="All rights reserved"
+license="GNU GPL 3.0"
 
 [[mods]]
 modId="btp"
-version="1.2.4"
+version="${file.jarVersion}"
 displayName="Better Tactical Presentation"
-logoFile="btp.png"
+logoFile="logo.png"
 credits="Powered by TACZ"
 authors="Feima"
 description='''
@@ -18,11 +18,14 @@ modId="tacz"
 mandatory=true
 versionRange="[1.1.5,)"
 ordering="NONE"
-side="BOTH"
+side="CLIENT"
 
 [[dependencies.btp]]
 modId="forge"
 mandatory=true
 versionRange="[47,)"
 ordering="NONE"
-side="BOTH"
+side="CLIENT"
+
+[modproperties.btp]
+catalogueImageIcon = "icon.png"
