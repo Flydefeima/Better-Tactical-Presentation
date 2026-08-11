@@ -6,9 +6,9 @@
 
 ## Overview / 概述
 
-**Better Tactical Presentation** is a client-side enhancement mod for [TACZ (Timeless and Classics Zero)](https://github.com/MCModderAnchor/TACZ). It improves the tactical leaning experience by intercepting mouse events and using Mixins to provide two flexible operation modes.
+**Better Tactical Presentation** is a client-side enhancement mod for [TACZ](https://github.com/MCModderAnchor/TACZ). It improves the tactical leaning experience by intercepting mouse events and using Mixins to provide two flexible operation modes.
 
-**Better Tactical Presentation** 是一个为 [TACZ（Timeless and Classics Zero）](https://github.com/MCModderAnchor/TACZ) 开发的客户端增强模组，通过接管鼠标事件和 Mixin 注入，优化战术据枪（枪械倾斜）的操作体验。
+**Better Tactical Presentation** 是一个为 [TACZ](https://github.com/MCModderAnchor/TACZ) 开发的客户端增强模组，通过接管鼠标事件和 Mixin 注入，优化战术据枪（枪械倾斜）的操作体验。
 
 ---
 
@@ -19,14 +19,14 @@
 - **Right-click Long Press Lean (optional)**: When enabled, `B` is disabled; short right-click toggles ADS, long right-click triggers lean.
 - **Disable Vanilla Crouch Lean**: Option to disable TACZ's default "crouch to lean" behavior.
 - **Break Sprint**: Automatically disables sprinting while leaning.
-- **TaCZ-Labs Compatibility**: crosshair automatically hides when leaning.
+- **[TaCZ-Labs](https://github.com/Txt-Text/TaCZ-Labs) Compatibility**: crosshair automatically hides when leaning.
 
 - **双模式切换**：按下 `B` 键（默认）在“瞄准模式”与“倾斜模式”间切换。
 - **倾斜模式**：右键按下进入据枪（枪械倾斜），松开恢复。
 - **右键长按据枪（可选）**：启用后 `B` 键失效，右键短按切换开镜，长按进入据枪。
 - **禁用原版蹲下倾斜**：可关闭 TACZ 原版的“蹲下自动倾斜”功能。
 - **打断疾跑**：据枪状态下自动禁用疾跑。
-- **TaCZ-Labs 兼容**: 据枪时自动隐藏准星。
+- **[TaCZ-Labs](https://github.com/Txt-Text/TaCZ-Labs) 兼容**: 据枪时自动隐藏准星。
 
 > All keys and parameters are adjustable via the config file. / 所有按键和参数均可通过配置文件调整。
 
