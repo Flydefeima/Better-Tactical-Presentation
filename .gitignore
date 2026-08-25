@@ -3,7 +3,6 @@
 build/
 gradle-app.setting
 !gradle-wrapper.jar
-.gradle-wrapper.properties
 
 # -------------------- IDE --------------------
 .idea/
@@ -42,6 +41,7 @@ target/
 *.jar
 *.war
 *.ear
+!libs/*.jar
 
 # -------------------- Local config --------------------
 local.properties
@@ -51,3 +51,6 @@ secret.properties
 # -------------------- Mod specific --------------------
 src/generated/resources/
 *.refmap.json
+
+# ------------- Android media scan blocker -------------
+.nomedia
