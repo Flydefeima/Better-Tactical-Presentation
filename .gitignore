@@ -51,6 +51,3 @@ secret.properties
 # -------------------- Mod specific --------------------
 src/generated/resources/
 *.refmap.json
-
-# ------------- Android media scan blocker -------------
-.nomedia
