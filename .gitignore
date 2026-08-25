@@ -2,7 +2,6 @@
 .gradle/
 build/
 gradle-app.setting
-!gradle-wrapper.jar
 
 # -------------------- IDE --------------------
 .idea/
@@ -42,6 +41,8 @@ target/
 *.war
 *.ear
 !libs/*.jar
+!libs/**/*.class
+!gradle-wrapper.jar
 
 # -------------------- Local config --------------------
 local.properties
