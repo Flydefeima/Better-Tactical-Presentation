@@ -1,0 +1,24 @@
+{
+  "key.btp.toggle_lean": "Toggle Aim/Lean Mode",
+  "key.btp.hold_lean": "Hold to Lean",
+  "key.categories.btp": "Better Tactical Presentation",
+  "message.btp.mode.aim": "Tactical Lean Off",
+  "message.btp.mode.lean": "Tactical Lean On",
+  "message.btp.aim_on": "Aim Mode",
+  "message.btp.lean_on": "Tactical Lean",
+
+  "config.btp.interruptOnToggle": "Interrupt on Toggle",
+  "config.btp.longPressThreshold": "Long Press Threshold",
+  "config.btp.enableLongPressLean": "Enable Right-Click Long Press Lean",
+  "config.btp.disableVanillaCrouchLean": "Disable Vanilla Crouch Lean",
+  "config.btp.showLongPressLeanMessages": "Show Right-Click Lean Messages",
+  "config.btp.breakSprint": "Break Sprint",
+  "config.btp.leanSpreadMultiplier": "Lean Spread Multiplier",
+  "config.btp.compatTaczLabsCrosshair": "TaCZ:Labs Crosshair Compatibility",
+  "config.btp.resetToAimOnItemSwitch": "Reset to Aim on Item Switch",
+  "config.btp.enableThirdPersonLeanAnimation": "Enable Third-Person Lean Animation",
+  "config.btp.tacticalCrosshair": "Tactical Crosshair Type",
+  "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs compatibility failed! Please update Better Tactical Presentation or TaCZ:Labs.",
+  "message.btp.missing_lean_animation": "§eBetter Tactical Presentation: Lean animation not found. Please check your resource pack.",
+  "message.btp.independent_anim_load_failed": "§cFailed to load independent lean animation. PlayerAnimator may be incompatible."
+}

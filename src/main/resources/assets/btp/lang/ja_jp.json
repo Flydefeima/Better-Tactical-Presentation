@@ -1,0 +1,24 @@
+{
+  "key.btp.toggle_lean": "エイム/タクティカルリーン切り替え",
+  "key.btp.hold_lean": "長押しでタクティカルリーン",
+  "key.categories.btp": "Better Tactical Presentation",
+  "message.btp.mode.aim": "タクティカルリーン オフ",
+  "message.btp.mode.lean": "タクティカルリーン オン",
+  "message.btp.aim_on": "エイムモード",
+  "message.btp.lean_on": "タクティカルリーン",
+
+  "config.btp.interruptOnToggle": "切り替え時に割り込む",
+  "config.btp.longPressThreshold": "長押し判定時間（ミリ秒）",
+  "config.btp.enableLongPressLean": "右クリック長押しリーンを有効化",
+  "config.btp.disableVanillaCrouchLean": "バニラしゃがみリーンを無効化",
+  "config.btp.showLongPressLeanMessages": "右クリック長押しリーンメッセージを表示",
+  "config.btp.breakSprint": "スプリントを中断",
+  "config.btp.leanSpreadMultiplier": "リーン時拡散倍率",
+  "config.btp.compatTaczLabsCrosshair": "TaCZ:Labs クロスヘア互換",
+  "config.btp.resetToAimOnItemSwitch": "アイテム切り替え時にエイムモードにリセット",
+  "config.btp.enableThirdPersonLeanAnimation": "三人称リーンアニメーションを有効化",
+  "config.btp.tacticalCrosshair": "タクティカルリーン時クロスヘアタイプ",
+  "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs との互換性に失敗しました！Better Tactical Presentation または TaCZ:Labs を更新してください。",
+  "message.btp.missing_lean_animation": "§eBetter Tactical Presentation: リーンアニメーションが見つかりません。リソースパックを確認してください。",
+  "message.btp.independent_anim_load_failed": "§c独立リーンアニメーションの読み込みに失敗しました。PlayerAnimator が互換性がない可能性があります。"
+}

@@ -1,0 +1,45 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="GNU GPL 3.0"
+
+[[mods]]
+modId="btp"
+version="${file.jarVersion}"
+displayName="Better Tactical Presentation"
+logoFile="logo.png"
+credits="Sweda"
+authors="Feima"
+description='''
+Adds a toggle key for the tilt gun mechanic in TACZ.
+'''
+
+[[dependencies.btp]]
+modId="tacz"
+mandatory=true
+versionRange="[1.1.5,)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.btp]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.btp]]
+modId="taczlabs"
+mandatory=false
+versionRange="[1.0.0,)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.btp]]
+modId="playeranimator"
+mandatory=false
+versionRange="[1.0.0,)"
+ordering="NONE"
+side="CLIENT"
+
+[modproperties.btp]
+catalogueImageIcon = "icon.png"

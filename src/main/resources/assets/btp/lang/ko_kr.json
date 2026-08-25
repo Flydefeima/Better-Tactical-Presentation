@@ -1,0 +1,24 @@
+{
+  "key.btp.toggle_lean": "조준/전술적 자세 전환",
+  "key.btp.hold_lean": "길게 눌러 전술적 자세",
+  "key.categories.btp": "Better Tactical Presentation",
+  "message.btp.mode.aim": "전술적 자세 꺼짐",
+  "message.btp.mode.lean": "전술적 자세 켜짐",
+  "message.btp.aim_on": "조준 모드",
+  "message.btp.lean_on": "전술적 자세",
+
+  "config.btp.interruptOnToggle": "전환 시 즉시 중단",
+  "config.btp.longPressThreshold": "길게 누르기 판정 시간 (밀리초)",
+  "config.btp.enableLongPressLean": "우클릭 길게 누르기로 전술적 자세 활성화",
+  "config.btp.disableVanillaCrouchLean": "기본 웅크리기 자세 비활성화",
+  "config.btp.showLongPressLeanMessages": "우클릭 길게 누르기 자세 메시지 표시",
+  "config.btp.breakSprint": "달리기 중단",
+  "config.btp.leanSpreadMultiplier": "전술적 자세 시 확산 배율",
+  "config.btp.compatTaczLabsCrosshair": "TaCZ:Labs 조준선 호환",
+  "config.btp.resetToAimOnItemSwitch": "아이템 전환 시 조준 모드로 초기화",
+  "config.btp.enableThirdPersonLeanAnimation": "3인칭 전술적 자세 애니메이션 활성화",
+  "config.btp.tacticalCrosshair": "전술적 자세 시 조준선 유형",
+  "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs 호환성 실패! Better Tactical Presentation 또는 TaCZ:Labs를 업데이트하세요.",
+  "message.btp.missing_lean_animation": "§eBetter Tactical Presentation: 전술적 자세 애니메이션을 찾을 수 없습니다. 리소스 팩을 확인하세요.",
+  "message.btp.independent_anim_load_failed": "§c독립 전술적 자세 애니메이션 로드 실패. PlayerAnimator가 호환되지 않을 수 있습니다."
+}

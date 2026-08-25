@@ -1,0 +1,24 @@
+{
+  "key.btp.toggle_lean": "Переключить прицеливание/тактический наклон",
+  "key.btp.hold_lean": "Удерживать для тактического наклона",
+  "key.categories.btp": "Better Tactical Presentation",
+  "message.btp.mode.aim": "Тактический наклон Выкл",
+  "message.btp.mode.lean": "Тактический наклон Вкл",
+  "message.btp.aim_on": "Режим прицеливания",
+  "message.btp.lean_on": "Тактический наклон",
+
+  "config.btp.interruptOnToggle": "Прерывать при переключении",
+  "config.btp.longPressThreshold": "Время удержания (мс)",
+  "config.btp.enableLongPressLean": "Включить тактический наклон по удержанию ПКМ",
+  "config.btp.disableVanillaCrouchLean": "Отключить наклон при приседании (ванильный)",
+  "config.btp.showLongPressLeanMessages": "Показывать сообщения о тактическом наклоне",
+  "config.btp.breakSprint": "Прерывать спринт",
+  "config.btp.leanSpreadMultiplier": "Множитель разброса при наклоне",
+  "config.btp.compatTaczLabsCrosshair": "Совместимость с прицелом TaCZ:Labs",
+  "config.btp.resetToAimOnItemSwitch": "Сбрасывать в режим прицеливания при смене предмета",
+  "config.btp.enableThirdPersonLeanAnimation": "Включить анимацию тактического наклона от третьего лица",
+  "config.btp.tacticalCrosshair": "Тип прицела в тактическом наклоне",
+  "message.btp.taczlabs_reflection_failed": "§cОшибка совместимости с TaCZ:Labs! Обновите Better Tactical Presentation или TaCZ:Labs.",
+  "message.btp.missing_lean_animation": "§eBetter Tactical Presentation: Анимация тактического наклона не найдена. Проверьте набор ресурсов.",
+  "message.btp.independent_anim_load_failed": "§cНе удалось загрузить независимую анимацию тактического наклона. Возможно, PlayerAnimator несовместим."
+}

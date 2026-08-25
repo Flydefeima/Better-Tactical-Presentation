@@ -1,0 +1,24 @@
+{
+  "key.btp.toggle_lean": "切换瞄准/倾斜模式",
+  "key.btp.hold_lean": "按住据枪",
+  "key.categories.btp": "更好的战术据枪",
+  "message.btp.mode.aim": "战术据枪 关",
+  "message.btp.mode.lean": "战术据枪 开",
+  "message.btp.aim_on": "开镜模式",
+  "message.btp.lean_on": "战术据枪",
+
+  "config.btp.interruptOnToggle": "打断切换",
+  "config.btp.longPressThreshold": "长按判定时间",
+  "config.btp.enableLongPressLean": "启用右键长按据枪",
+  "config.btp.disableVanillaCrouchLean": "禁用原版蹲下据枪",
+  "config.btp.showLongPressLeanMessages": "显示右键据枪提示",
+  "config.btp.breakSprint": "打断疾跑",
+  "config.btp.leanSpreadMultiplier": "据枪散布倍率",
+  "config.btp.compatTaczLabsCrosshair": "TaCZ:Labs 准星兼容",
+  "config.btp.resetToAimOnItemSwitch": "切换物品后重置为瞄准模式",
+  "config.btp.enableThirdPersonLeanAnimation": "启用第三人称据枪动画",
+  "config.btp.tacticalCrosshair": "战术据枪准星类型",
+  "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs 兼容失败！请更新更好的战术据枪或 TaCZ:Labs。",
+  "message.btp.missing_lean_animation": "§e更好的战术据枪：未找到据枪动画，请检查资源包。",
+  "message.btp.independent_anim_load_failed": "§c独立据枪动画加载失败，PlayerAnimator可能不兼容。"
+}
