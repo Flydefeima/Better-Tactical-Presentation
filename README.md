@@ -78,9 +78,9 @@ GNU General Public License v3.0
 
 ## Credits / 致谢
 
-- TACZ Team for the excellent gun framework.
-- Sweda666 for providing code support for the lean spread feature.
+- [TaCZ](https://github.com/MCModderAnchor/TACZ) Team for the excellent gun framework.
+- [Sweda](https://github.com/Sweda666) for providing code support for the lean spread feature.
 - All testers and users who provided feedback.
-- [TACZ](https://github.com/MCModderAnchor/TACZ) 团队提供了优秀的枪械框架。
+- [TaCZ](https://github.com/MCModderAnchor/TACZ) 团队提供了优秀的枪械框架。
 - [Sweda](https://github.com/Sweda666) 为据枪散布功能提供了代码支持。
 - 所有测试人员与反馈用户。
