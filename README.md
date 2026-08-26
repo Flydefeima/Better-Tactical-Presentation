@@ -60,8 +60,8 @@ Dependencies / 依赖要求
 
 - **Minecraft**: 1.20.1
 - **Forge**: 47.x (recommended 47.3.0 or higher)
-- For BTP versions below 1.2.0: Requires TaCZ 1.1.8+ and TaCZ Tweaks 3.0.0-alpha.6+.
-- For BTP versions 1.2.0 and above: Requires TaCZ 1.1.5+.
+- For BTP versions below 1.2.0: Requires [TaCZ](https://github.com/MCModderAnchor/TACZ) 1.1.8+ and TaCZ Tweaks 3.0.0-alpha.6+.
+- For BTP versions 1.2.0 and above: Requires [TaCZ](https://github.com/MCModderAnchor/TACZ) 1.1.5+.
 - [PlayerAnimator](https://github.com/KosmX/minecraftPlayerAnimator) (optional): Required for third-person lean animation
 
 > This mod is **client-side only**. It is not required on the server.
