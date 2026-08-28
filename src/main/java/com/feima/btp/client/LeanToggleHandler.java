@@ -1,6 +1,5 @@
 package com.feima.btp.client;
 
-import com.feima.btp.BTPLog;
 import com.feima.btp.BTPMod;
 import com.feima.btp.client.compat.TaczLabsCompatHelper;
 import com.feima.btp.config.BTPConfig;
@@ -25,24 +24,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.feima.btp.client.ClientModEvents.HOLD_LEAN_KEY;
 import static com.feima.btp.client.ClientModEvents.TOGGLE_LEAN_KEY;
 
 @Mod.EventBusSubscriber(modid = BTPMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class LeanToggleHandler {
-
-    // ---------- 状态枚举 ----------
-    public enum LeanMode { AIM, LEAN }
-    public enum LeanState { IDLE, AIMING, LEANING, LONG_PRESS_WAITING }
-
-    // ---------- 状态变量 ----------
-    private static LeanMode currentMode = LeanMode.AIM;
-    private static LeanState currentState = LeanState.IDLE;
-    private static volatile boolean rightPressed = false;
-    private static volatile boolean suppressRightClick = false;
-    private static volatile boolean rightLongPressTriggered = false;
-    private static volatile boolean wasAimBeforePress = false;
-
-    private static ItemStack lastMainHand = ItemStack.EMPTY;
 
     private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "BTP-LeanTimer");
@@ -58,23 +44,45 @@ public class LeanToggleHandler {
         }));
     }
 
+    private static volatile int mode = 0;
+    private static volatile boolean rightPressed = false;
+    private static volatile boolean isLeaning = false;
+    private static volatile boolean suppressRightClick = false;
+    private static volatile boolean rightLongPressTriggered = false;
+    private static volatile boolean wasAimBeforePress = false;
+    private static volatile boolean holdLeanActive = false;
+
+    private static ItemStack lastMainHand = ItemStack.EMPTY;
+    private static int lastSelectedSlot = -1;
     private static ScheduledFuture<?> leanTimerTask = null;
 
-    // ---------- 对外接口 ----------
     public static boolean isLeaning() {
         LocalPlayer player = Minecraft.getInstance().player;
         if (!isHoldingGun(player)) return false;
-        if (BTPConfig.enableLongPressLean) {
-            return currentState == LeanState.LEANING && rightPressed;
+
+        if (holdLeanActive) {
+            return true;
         }
-        return currentState == LeanState.LEANING && rightPressed && currentMode == LeanMode.LEAN;
+
+        if (BTPConfig.enableLongPressLean) {
+            return isLeaning && rightPressed;
+        }
+
+        return isLeaning && rightPressed && mode == 1;
     }
 
-    public static LeanState getCurrentState() { return currentState; }
-    public static LeanMode getCurrentMode() { return currentMode; }
-
     private static boolean isHoldingGun(LocalPlayer player) {
-        return player != null && IGun.mainHandHoldGun(player);
+        if (player == null) return false;
+        return IGun.mainHandHoldGun(player);
+    }
+
+    private static boolean isRealItemSwitch(LocalPlayer player, ItemStack currentMainHand) {
+        int selected = player.getInventory().selected;
+        if (selected != lastSelectedSlot) {
+            lastSelectedSlot = selected;
+            return true;
+        }
+        return currentMainHand.getItem() != lastMainHand.getItem();
     }
 
     private static void cancelLeanTimer() {
@@ -84,94 +92,138 @@ public class LeanToggleHandler {
         }
     }
 
-    // ---------- 核心状态转换 ----------
     private static void resetAllStates() {
         cancelLeanTimer();
-        currentMode = LeanMode.AIM;
-        currentState = LeanState.IDLE;
+        mode = 0;
         rightPressed = false;
+        isLeaning = false;
         suppressRightClick = false;
         rightLongPressTriggered = false;
+        holdLeanActive = false;
         lastMainHand = ItemStack.EMPTY;
+        lastSelectedSlot = -1;
         TaczLabsCompatHelper.setCrosshairEnabled(true);
-        BTPLog.LOGGER.debug("All states reset.");
     }
 
     private static void forceStopAllActions(LocalPlayer player) {
         if (player == null) return;
-        cancelLeanTimer();
-        rightPressed = false;
-        rightLongPressTriggered = false;
-        suppressRightClick = true;
-        currentState = LeanState.IDLE;
+        isLeaning = false;
         IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
         AimKey.AIM_KEY.setDown(false);
+        rightPressed = false;
+        cancelLeanTimer();
+        rightLongPressTriggered = false;
+        holdLeanActive = false;
         InputHelper.clearRightMouseButton();
         Minecraft.getInstance().options.keyUse.setDown(false);
+        suppressRightClick = true;
         TaczLabsCompatHelper.setCrosshairEnabled(true);
-        BTPLog.LOGGER.debug("Force stopped all actions.");
     }
 
-    private static void applyAimMode(boolean enable, LocalPlayer player) {
+    private static void applyAimMode(boolean enable) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
         if (!isHoldingGun(player)) return;
+
         boolean currentAim = IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
+
         if (enable && !currentAim) {
-            currentState = LeanState.AIMING;
+            isLeaning = false;
             IClientPlayerGunOperator.fromLocalPlayer(player).aim(true);
             AimKey.AIM_KEY.setDown(true);
             TaczLabsCompatHelper.setCrosshairEnabled(true);
         } else if (!enable && currentAim) {
-            currentState = LeanState.IDLE;
+            isLeaning = false;
             IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
             AimKey.AIM_KEY.setDown(false);
             TaczLabsCompatHelper.setCrosshairEnabled(true);
         }
     }
 
-    private static void applyLeanMode(boolean enable, LocalPlayer player) {
+    private static void applyLeanMode(boolean enable) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
         if (!isHoldingGun(player)) return;
-        if (BTPConfig.breakSprint) {
+
+        if (enable && BTPConfig.breakSprint) {
             player.setSprinting(false);
         }
         IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
         AimKey.AIM_KEY.setDown(false);
-        currentState = enable ? LeanState.LEANING : LeanState.IDLE;
+        isLeaning = enable;
         TaczLabsCompatHelper.setCrosshairEnabled(!enable);
     }
 
     private static void toggleMode(LocalPlayer player) {
         if (!isHoldingGun(player)) return;
-        LeanMode newMode = (currentMode == LeanMode.AIM) ? LeanMode.LEAN : LeanMode.AIM;
+
+        int newMode = 1 - mode;
 
         if (BTPConfig.interruptOnToggle) {
             forceStopAllActions(player);
-            currentMode = newMode;
+            mode = newMode;
             player.displayClientMessage(
-                    Component.translatable(newMode == LeanMode.AIM ? "message.btp.mode.aim" : "message.btp.mode.lean"),
+                    Component.translatable(newMode == 0 ? "message.btp.mode.aim" : "message.btp.mode.lean"),
                     true
             );
             return;
         }
 
         if (rightPressed && isHoldingGun(player)) {
-            if (currentMode == LeanMode.AIM && newMode == LeanMode.LEAN) {
-                applyAimMode(false, player);
-                applyLeanMode(true, player);
-            } else if (currentMode == LeanMode.LEAN && newMode == LeanMode.AIM) {
-                applyLeanMode(false, player);
-                applyAimMode(true, player);
+            if (mode == 0 && newMode == 1) {
+                IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
+                AimKey.AIM_KEY.setDown(false);
+                if (BTPConfig.breakSprint) {
+                    player.setSprinting(false);
+                }
+                isLeaning = true;
+                TaczLabsCompatHelper.setCrosshairEnabled(false);
+            } else if (mode == 1 && newMode == 0) {
+                isLeaning = false;
+                TaczLabsCompatHelper.setCrosshairEnabled(true);
+                IClientPlayerGunOperator.fromLocalPlayer(player).aim(true);
+                AimKey.AIM_KEY.setDown(true);
             }
         }
-        currentMode = newMode;
+
+        mode = newMode;
         InputHelper.clearRightMouseButton();
         Minecraft.getInstance().options.keyUse.setDown(false);
         player.displayClientMessage(
-                Component.translatable(newMode == LeanMode.AIM ? "message.btp.mode.aim" : "message.btp.mode.lean"),
+                Component.translatable(newMode == 0 ? "message.btp.mode.aim" : "message.btp.mode.lean"),
                 true
         );
     }
 
-    // ---------- 事件处理 ----------
+    private static void handleHoldLeanKey(int action, LocalPlayer player) {
+        if (!isHoldingGun(player)) {
+            if (holdLeanActive) {
+                holdLeanActive = false;
+                if (!rightPressed) {
+                    applyLeanMode(false);
+                }
+            }
+            return;
+        }
+
+        if (action == GLFW.GLFW_PRESS) {
+            holdLeanActive = true;
+            applyLeanMode(true);
+        } else if (action == GLFW.GLFW_RELEASE) {
+            holdLeanActive = false;
+
+            if (rightPressed) {
+                if (mode == 0 && !(BTPConfig.enableLongPressLean && rightLongPressTriggered)) {
+                    applyAimMode(true);
+                }
+            } else {
+                if (isLeaning) {
+                    applyLeanMode(false);
+                }
+            }
+        }
+    }
+
     @SubscribeEvent
     public static void onPlayerLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         resetAllStates();
@@ -179,44 +231,117 @@ public class LeanToggleHandler {
 
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {
-    
-        if (BTPConfig.enableLongPressLean) {
-            return;
-        }
-        if (event.getKey() != TOGGLE_LEAN_KEY.getKey().getValue()) return;
-        if (event.getAction() != GLFW.GLFW_RELEASE) return;
-
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null) return;
+        if (mc.screen != null) return;
 
+        int keyCode = event.getKey();
+        int action = event.getAction();
+
+        if (keyCode == HOLD_LEAN_KEY.getKey().getValue()) {
+            if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_RELEASE) {
+                handleHoldLeanKey(action, player);
+                HOLD_LEAN_KEY.consumeClick();
+            }
+            return;
+        }
+
+        if (BTPConfig.enableLongPressLean) return;
+        if (keyCode != TOGGLE_LEAN_KEY.getKey().getValue()) return;
+        if (action != GLFW.GLFW_RELEASE) return;
         toggleMode(player);
     }
 
     @SubscribeEvent
     public static void onMouseInput(InputEvent.MouseButton.Pre event) {
-        if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_RIGHT) return;
+        int button = event.getButton();
+        int action = event.getAction();
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen != null) return;
         LocalPlayer player = mc.player;
         if (player == null) return;
 
-        if (BTPConfig.enableLongPressLean) {
-            handleLongPressLean(event, player);
+        if (button == HOLD_LEAN_KEY.getKey().getValue()) {
+            if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_RELEASE) {
+                handleHoldLeanKey(action, player);
+                event.setCanceled(true);
+                HOLD_LEAN_KEY.consumeClick();
+            }
             return;
         }
 
-        // 标准模式
-        handleStandardLean(event, player);
-    }
+        if (button != GLFW.GLFW_MOUSE_BUTTON_RIGHT) return;
 
-    private static void handleStandardLean(InputEvent.MouseButton.Pre event, LocalPlayer player) {
-        int action = event.getAction();
-        Minecraft mc = Minecraft.getInstance();
+        if (BTPConfig.enableLongPressLean) {
+            if (!isHoldingGun(player)) {
+                if (rightPressed) forceStopAllActions(player);
+                rightPressed = false;
+                cancelLeanTimer();
+                rightLongPressTriggered = false;
+                return;
+            }
+
+            event.setCanceled(true);
+
+            if (event.getAction() == GLFW.GLFW_PRESS) {
+                wasAimBeforePress = IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
+                rightPressed = true;
+                rightLongPressTriggered = false;
+                applyLeanMode(false);
+
+                cancelLeanTimer();
+
+                int threshold = BTPConfig.longPressThreshold;
+                leanTimerTask = SCHEDULER.schedule(() -> {
+                    Minecraft.getInstance().execute(() -> {
+                        if (leanTimerTask == null || leanTimerTask.isCancelled() || !rightPressed || rightLongPressTriggered) {
+                            return;
+                        }
+                        LocalPlayer currentPlayer = Minecraft.getInstance().player;
+                        if (isHoldingGun(currentPlayer)) {
+                            applyAimMode(false);
+                            applyLeanMode(true);
+                            rightLongPressTriggered = true;
+
+                            if (BTPConfig.showLongPressLeanMessages) {
+                                currentPlayer.displayClientMessage(
+                                        Component.translatable("message.btp.lean_on"),
+                                        true
+                                );
+                            }
+                        }
+                    });
+                }, threshold, TimeUnit.MILLISECONDS);
+
+            } else if (event.getAction() == GLFW.GLFW_RELEASE) {
+                rightPressed = false;
+                cancelLeanTimer();
+
+                if (rightLongPressTriggered) {
+                    applyLeanMode(false);
+                    rightLongPressTriggered = false;
+                } else {
+                    applyAimMode(!wasAimBeforePress);
+                    if (BTPConfig.showLongPressLeanMessages) {
+                        if (!wasAimBeforePress) {
+                            player.displayClientMessage(
+                                    Component.translatable("message.btp.aim_on"),
+                                    true
+                            );
+                        }
+                    }
+                }
+
+                InputHelper.clearRightMouseButton();
+                mc.options.keyUse.setDown(false);
+            }
+            return;
+        }
 
         if (suppressRightClick) {
-            if (action == GLFW.GLFW_RELEASE) {
+            if (event.getAction() == GLFW.GLFW_RELEASE) {
                 suppressRightClick = false;
                 InputHelper.clearRightMouseButton();
                 return;
@@ -231,160 +356,62 @@ public class LeanToggleHandler {
             if (rightPressed) {
                 event.setCanceled(true);
                 forceStopAllActions(player);
-            }
-            return;
-        }
-
-        if (currentMode == LeanMode.AIM) {
-            rightPressed = (action == GLFW.GLFW_PRESS);
-            return;
-        }
-
-        // LeanMode.LEAN
-        event.setCanceled(true);
-        rightPressed = (action == GLFW.GLFW_PRESS);
-        applyLeanMode(rightPressed, player);
-    }
-
-    private static void handleLongPressLean(InputEvent.MouseButton.Pre event, LocalPlayer player) {
-        int action = event.getAction();
-        Minecraft mc = Minecraft.getInstance();
-
-        if (!isHoldingGun(player)) {
-            if (rightPressed) forceStopAllActions(player);
-            rightPressed = false;
-            cancelLeanTimer();
-            rightLongPressTriggered = false;
-            return;
-        }
-
-        event.setCanceled(true);
-
-        if (action == GLFW.GLFW_PRESS) {
-            wasAimBeforePress = IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
-            rightPressed = true;
-            rightLongPressTriggered = false;
-            applyLeanMode(false, player);
-            currentState = LeanState.LONG_PRESS_WAITING;
-
-            // 长按开始时打断疾跑
-            if (BTPConfig.breakSprint) {
-                player.setSprinting(false);
-            }
-
-            cancelLeanTimer();
-            int threshold = BTPConfig.longPressThreshold;
-            leanTimerTask = SCHEDULER.schedule(() -> {
-                Minecraft.getInstance().execute(() -> {
-                    Minecraft mc2 = Minecraft.getInstance();
-                    if (mc2.player == null) return;
-                    LocalPlayer currentPlayer = mc2.player;
-                    if (rightPressed && !rightLongPressTriggered && isHoldingGun(currentPlayer)) {
-                        applyAimMode(false, currentPlayer);
-                        applyLeanMode(true, currentPlayer);
-                        rightLongPressTriggered = true;
-                        if (BTPConfig.showLongPressLeanMessages) {
-                            currentPlayer.displayClientMessage(
-                                    Component.translatable("message.btp.lean_on"),
-                                    true
-                            );
-                        }
-                    }
-                });
-            }, threshold, TimeUnit.MILLISECONDS);
-
-        } else if (action == GLFW.GLFW_RELEASE) {
-            rightPressed = false;
-            cancelLeanTimer();
-
-            if (rightLongPressTriggered) {
-                applyLeanMode(false, player);
-                rightLongPressTriggered = false;
+                return;
             } else {
-                applyAimMode(!wasAimBeforePress, player);
-                if (BTPConfig.showLongPressLeanMessages && !wasAimBeforePress) {
-                    player.displayClientMessage(Component.translatable("message.btp.aim_on"), true);
-                }
-            }
-
-            InputHelper.clearRightMouseButton();
-            mc.options.keyUse.setDown(false);
-        }
-    }
-
-    // ---------- 统一状态清理 Tick ----------
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        Minecraft mc = Minecraft.getInstance();
-        LocalPlayer player = mc.player;
-        if (player == null) return;
-
-        // GUI 打开时退出据枪
-        if (mc.screen != null) {
-            boolean wasLeaning = currentState == LeanState.LEANING;
-            if (wasLeaning || rightPressed) {
-                cancelLeanTimer();
                 rightPressed = false;
-                rightLongPressTriggered = false;
-                suppressRightClick = false;
-                if (currentState == LeanState.LEANING || wasLeaning) {
-                    applyLeanMode(false, player);
-                }
-                if (currentState == LeanState.AIMING) {
-                    applyAimMode(true, player);
-                }
-                InputHelper.clearRightMouseButton();
-                mc.options.keyUse.setDown(false);
-                TaczLabsCompatHelper.setCrosshairEnabled(true);
-                BTPLog.LOGGER.debug("GUI opened, state cleaned.");
                 return;
             }
         }
 
-        // 长按模式下的状态修正
-        if (BTPConfig.enableLongPressLean) {
-            // 打断疾跑（长按等待期间也生效）
-            if (rightPressed && BTPConfig.breakSprint && isHoldingGun(player)) {
-                if (player.isSprinting()) {
-                    player.setSprinting(false);
-                }
-                if (mc.options.keySprint.isDown()) {
-                    mc.options.keySprint.setDown(false);
-                }
-            }
+        if (mode == 0) {
+            rightPressed = event.getAction() == GLFW.GLFW_PRESS;
+            return;
+        }
 
-            if (rightPressed && !InputHelper.isPhysicalRightPressed()) {
-                if (currentState == LeanState.LEANING) {
-                    applyLeanMode(false, player);
-                }
+        event.setCanceled(true);
+        rightPressed = event.getAction() == GLFW.GLFW_PRESS;
+        applyLeanMode(rightPressed);
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null) return;
+
+        if (mc.screen != null) {
+            if (holdLeanActive || isLeaning || rightPressed) {
+                cancelLeanTimer();
                 rightPressed = false;
                 rightLongPressTriggered = false;
-                cancelLeanTimer();
+                holdLeanActive = false;
+                applyLeanMode(false);
+                suppressRightClick = false;
                 InputHelper.clearRightMouseButton();
                 mc.options.keyUse.setDown(false);
-                suppressRightClick = false;
-                TaczLabsCompatHelper.setCrosshairEnabled(true);
             }
+        }
 
-            // 物品切换检测
+        if (BTPConfig.enableLongPressLean) {
             ItemStack currentMainHand = player.getMainHandItem();
             if (!ItemStack.matches(currentMainHand, lastMainHand)) {
-                if (!isHoldingGun(player) && rightPressed) {
+                if (BTPConfig.resetToAimOnItemSwitch) {
+                    if (isRealItemSwitch(player, currentMainHand)) {
+                        forceStopAllActions(player);
+                    }
+                } else if (!isHoldingGun(player) && rightPressed) {
                     forceStopAllActions(player);
-                }
-                if (BTPConfig.resetToAimOnItemSwitch && isHoldingGun(player)) {
-                    applyLeanMode(false, player);
-                    currentMode = LeanMode.AIM;
                 }
                 lastMainHand = currentMainHand.copy();
             }
 
-            while (TOGGLE_LEAN_KEY.consumeClick()) { /* consume */ }
+            while (TOGGLE_LEAN_KEY.consumeClick()) {}
+            while (HOLD_LEAN_KEY.consumeClick()) {}
             return;
         }
 
-        // 标准模式
         if (suppressRightClick) {
             mc.options.keyUse.setDown(false);
             if (!InputHelper.isPhysicalRightPressed()) {
@@ -393,42 +420,42 @@ public class LeanToggleHandler {
             }
         }
 
-        if (rightPressed && !InputHelper.isPhysicalRightPressed()) {
-            if (currentState == LeanState.LEANING) {
-                applyLeanMode(false, player);
-            }
-            rightPressed = false;
-            rightLongPressTriggered = false;
-            cancelLeanTimer();
-            InputHelper.clearRightMouseButton();
-            mc.options.keyUse.setDown(false);
-            suppressRightClick = false;
-            TaczLabsCompatHelper.setCrosshairEnabled(true);
-        }
-
-        // 打断疾跑
-        if (BTPConfig.breakSprint && isLeaning() && isHoldingGun(player)) {
-            if (player.isSprinting()) {
-                player.setSprinting(false);
-            }
-            if (mc.options.keySprint.isDown()) {
-                mc.options.keySprint.setDown(false);
-            }
-        }
-
-        // 物品切换检测
         ItemStack currentMainHand = player.getMainHandItem();
         if (!ItemStack.matches(currentMainHand, lastMainHand)) {
-            if (!isHoldingGun(player) && rightPressed) {
+            if (BTPConfig.resetToAimOnItemSwitch) {
+                if (isRealItemSwitch(player, currentMainHand)) {
+                    applyLeanMode(false);
+                    mode = 0;
+                    if (rightPressed) {
+                        if (isHoldingGun(player)) {
+                            applyAimMode(true);
+                        } else {
+                            forceStopAllActions(player);
+                        }
+                    }
+                }
+            } else if (!isHoldingGun(player) && rightPressed) {
                 forceStopAllActions(player);
-            }
-            if (BTPConfig.resetToAimOnItemSwitch && isHoldingGun(player)) {
-                applyLeanMode(false, player);
-                currentMode = LeanMode.AIM;
             }
             lastMainHand = currentMainHand.copy();
         }
 
-        while (TOGGLE_LEAN_KEY.consumeClick()) { /* consume */ }
+        while (TOGGLE_LEAN_KEY.consumeClick()) {}
+        while (HOLD_LEAN_KEY.consumeClick()) {}
+
+        if (mc.screen == null) {
+            if (rightPressed && !InputHelper.isPhysicalRightPressed()) {
+                if (isLeaning) {
+                    applyLeanMode(false);
+                }
+                rightPressed = false;
+                rightLongPressTriggered = false;
+                cancelLeanTimer();
+                InputHelper.clearRightMouseButton();
+                mc.options.keyUse.setDown(false);
+                suppressRightClick = false;
+                TaczLabsCompatHelper.setCrosshairEnabled(true);
+            }
+        }
     }
 }

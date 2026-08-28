@@ -152,7 +152,6 @@ public class BTPConfig {
         tacticalCrosshair = TACTICAL_CROSSHAIR.get();
         cachedCrosshairConfig = null;
         cachedCrosshairType = null;
-        BTPLog.LOGGER.info("Config loaded.");
     }
 
     private static void ensureConfigFileExists(Path configPath) {

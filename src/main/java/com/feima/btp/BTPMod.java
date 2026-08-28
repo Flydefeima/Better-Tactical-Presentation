@@ -24,7 +24,6 @@ public class BTPMod {
     public static boolean isTaczLabsLoaded = false;
     public static boolean isPlayerAnimatorLoaded = false;
 
-    // 动画层 ID（供其他类使用）
     public static final ResourceLocation BTP_LOOP_LAYER = new ResourceLocation(MOD_ID, "lean_upper_loop");
     public static final ResourceLocation BTP_ONCE_LAYER = new ResourceLocation(MOD_ID, "lean_upper_once");
 
@@ -34,32 +33,18 @@ public class BTPMod {
         );
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onLoadComplete);
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, BTPConfig.SPEC, "btp-client.toml");
-        BTPLog.LOGGER.info("BTPMod initialized.");
     }
 
     private void onLoadComplete(FMLLoadCompleteEvent event) {
         isTaczLabsLoaded = ModList.get().isLoaded("taczlabs");
         isPlayerAnimatorLoaded = ModList.get().isLoaded("playeranimator");
 
-        if (isTaczLabsLoaded) {
-            BTPLog.LOGGER.info("TaCZ:Labs detected, crosshair compatibility enabled.");
-        }
-
         if (isPlayerAnimatorLoaded) {
-            BTPLog.LOGGER.info("PlayerAnimator detected, registering animation features.");
             try {
-                // 1. 通过反射加载 IndependentLeanAnimationHandler（不会触发类加载失败）
-                //    因为此时 playeranimator 已确认存在
-                Class<?> handlerClass = Class.forName("com.feima.btp.client.animation.IndependentLeanAnimationHandler");
-                
-                // 2. 调用静态方法 registerAnimationLayers()
-                Method registerMethod = handlerClass.getDeclaredMethod("registerAnimationLayers");
+                Class<?> animatorClass = Class.forName("com.feima.btp.client.animation.BTPAnimator");
+                Method registerMethod = animatorClass.getDeclaredMethod("registerAnimationLayers");
                 registerMethod.invoke(null);
-                
-                // 3. 注册事件处理器（@SubscribeEvent 方法会被 Forge 识别）
-                MinecraftForge.EVENT_BUS.register(handlerClass);
-                
-                BTPLog.LOGGER.info("IndependentLeanAnimationHandler registered and animation layers set up.");
+                MinecraftForge.EVENT_BUS.register(animatorClass);
             } catch (Throwable e) {
                 BTPLog.LOGGER.warn("Failed to register playeranimator features: {}", e.getMessage());
                 e.printStackTrace();
@@ -73,8 +58,6 @@ public class BTPMod {
                     }
                 });
             }
-        } else {
-            BTPLog.LOGGER.info("PlayerAnimator not detected, third-person lean animation disabled.");
         }
     }
 }

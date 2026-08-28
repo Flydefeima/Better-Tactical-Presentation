@@ -18,6 +18,7 @@
   "config.btp.resetToAimOnItemSwitch": "切换物品后重置为瞄准模式",
   "config.btp.enableThirdPersonLeanAnimation": "启用第三人称据枪动画",
   "config.btp.tacticalCrosshair": "战术据枪准星类型",
+
   "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs 兼容失败！请更新更好的战术据枪或 TaCZ:Labs。",
   "message.btp.missing_lean_animation": "§e更好的战术据枪：未找到据枪动画，请检查资源包。",
   "message.btp.independent_anim_load_failed": "§c独立据枪动画加载失败，PlayerAnimator可能不兼容。"

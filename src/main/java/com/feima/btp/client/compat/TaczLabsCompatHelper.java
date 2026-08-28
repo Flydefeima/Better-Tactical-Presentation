@@ -14,7 +14,7 @@ public class TaczLabsCompatHelper {
 
     private static boolean reflectionReady = false;
     private static boolean reflectionFailed = false;
-    private static boolean messageSent = false;  // BTP FIX: 只发送一次提示
+    private static boolean messageSent = false;
     private static Object enableCrosshairFieldValue;
     private static Method setMethod;
 
@@ -27,11 +27,9 @@ public class TaczLabsCompatHelper {
             enableCrosshairFieldValue = field.get(null);
             setMethod = enableCrosshairFieldValue.getClass().getMethod("set", Object.class);
             reflectionReady = true;
-            BTPLog.LOGGER.info("TaCZ:Labs reflection initialized.");
         } catch (Exception e) {
             reflectionFailed = true;
             BTPLog.LOGGER.warn("TaCZ:Labs reflection permanently disabled: {}", e.getMessage());
-            // BTP FIX: 发送一次聊天栏提示
             if (!messageSent) {
                 Minecraft.getInstance().execute(() -> {
                     Player player = Minecraft.getInstance().player;

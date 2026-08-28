@@ -1,28 +1,15 @@
 # -------------------- Gradle --------------------
 .gradle/
 build/
-gradle-app.setting
-!gradle-wrapper.jar
 
 # -------------------- IDE --------------------
 .idea/
 *.iml
 *.iws
 *.ipr
-.vscode/
-.classpath
-.project
-.settings/
-bin/
 
 # -------------------- Minecraft & Forge --------------------
 run/
-logs/
-crash-reports/
-saves/
-screenshots/
-eclipse/
-debug/
 *.log
 *.lock
 
@@ -30,18 +17,10 @@ debug/
 .DS_Store
 Thumbs.db
 *.tmp
-*.swp
-*.swo
-*~
 
 # -------------------- Build outputs --------------------
-out/
-target/
 *.class
-*.jar
-*.war
-*.ear
-!libs/*.jar
+!libs/**
 
 # -------------------- Local config --------------------
 local.properties
@@ -50,4 +29,4 @@ secret.properties
 
 # -------------------- Mod specific --------------------
 src/generated/resources/
-*.refmap.json
+src/test/
