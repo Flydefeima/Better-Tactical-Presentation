@@ -4,7 +4,6 @@ import com.feima.btp.BTPLog;
 import com.feima.btp.BTPMod;
 import com.feima.btp.client.TiltToggleHandler;
 import com.feima.btp.config.BTPConfig;
-import com.feima.btp.util.BTPTipsHelper;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.api.entity.IGunOperator;
@@ -16,14 +15,17 @@ import com.tacz.guns.compat.playeranimator.animation.PlayerAnimatorAssetManager;
 import dev.kosmx.playerAnim.api.layered.IAnimation;
 import dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer;
 import dev.kosmx.playerAnim.api.layered.ModifierLayer;
+import dev.kosmx.playerAnim.api.layered.modifier.AbstractFadeModifier;
 import dev.kosmx.playerAnim.core.data.KeyframeAnimation;
+import dev.kosmx.playerAnim.core.util.Ease;
 import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationAccess;
 import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationFactory;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -33,14 +35,23 @@ import java.util.Optional;
 
 public class BTPAnimator {
 
-    // 改为 public static final，供 BTPEventHandler 启动检查使用
+    // ===== 倾斜动画资源 ID =====
     public static final ResourceLocation RIFLE_TILT_ANIMATION_ID = new ResourceLocation(BTPMod.MOD_ID, "rifle_tilted_anim");
     public static final ResourceLocation PISTOL_TILT_ANIMATION_ID = new ResourceLocation(BTPMod.MOD_ID, "pistol_tilted_anim");
+
+    // ===== 占位动画资源 ID（指向 placeholder.json） =====
+    public static final ResourceLocation PLACEHOLDER_ANIMATION_ID = new ResourceLocation(BTPMod.MOD_ID, "placeholder");
 
     private static final String TILT_LOOP_ANIM_NAME = "rifle_tilted_gun";
     private static final String TILT_FIRE_ANIM_NAME = "rifle_tilted_gun_fire";
     private static final String PISTOL_LOOP_ANIM_NAME = "pistol_tilted";
     private static final String PISTOL_FIRE_ANIM_NAME = "pistol_tilted_fire";
+
+    // 占位动画名称（从 placeholder.json 中读取）
+    private static final String PLACEHOLDER_RIFLE_HOLD = "rifle_hold_placeholder";
+    private static final String PLACEHOLDER_RIFLE_AIM = "rifle_aim_placeholder";
+    private static final String PLACEHOLDER_PISTOL_HOLD = "pistol_hold_placeholder";
+    private static final String PLACEHOLDER_PISTOL_AIM = "pistol_aim_placeholder";
 
     private static final ResourceLocation BTP_LOOP_LAYER = BTPMod.BTP_LOOP_LAYER;
     private static final ResourceLocation BTP_ONCE_LAYER = BTPMod.BTP_ONCE_LAYER;
@@ -53,14 +64,19 @@ public class BTPAnimator {
 
     // 窗口期相关（硬编码 8 帧）
     private static final int TRANSITION_FRAMES_COUNT = 8;
-    private static boolean lastFrameCrawling = false;
+    private static boolean lastFrameProne = false;
     private static int transitionFrames = 0;
 
     // 物品切换追踪
     private static ItemStack lastGunItem = ItemStack.EMPTY;
 
-    // ===== 新增：蹲下开镜状态追踪 =====
     private static boolean crouchTiltClearedByAim = false;
+
+    // ===== 状态机 =====
+    private enum State { IDLE, TILTING, EXITING }
+    private static State currentState = State.IDLE;
+    private static long exitStartTime = 0;
+    private static boolean isProneRecovery = false;
 
     private static Method getAnimationsMethod = null;
 
@@ -74,6 +90,7 @@ public class BTPAnimator {
         }
     }
 
+    // ===== 工具方法 =====
     private static boolean isPistol(ItemStack gunItem) {
         if (gunItem.isEmpty()) return false;
         IGun iGun = IGun.getIGunOrNull(gunItem);
@@ -101,6 +118,18 @@ public class BTPAnimator {
         return isPistol(gunItem) ? PISTOL_FIRE_ANIM_NAME : TILT_FIRE_ANIM_NAME;
     }
 
+    /**
+     * 获取占位动画名称，根据枪型和是否瞄准选择
+     */
+    private static String getPlaceholderAnimName(ItemStack gunItem, boolean isAiming) {
+        boolean pistol = isPistol(gunItem);
+        if (pistol) {
+            return isAiming ? PLACEHOLDER_PISTOL_AIM : PLACEHOLDER_PISTOL_HOLD;
+        } else {
+            return isAiming ? PLACEHOLDER_RIFLE_AIM : PLACEHOLDER_RIFLE_HOLD;
+        }
+    }
+
     private static Optional<KeyframeAnimation> getAnimationsSafely(PlayerAnimatorAssetManager manager,
                                                                    ResourceLocation id, String name) {
         if (getAnimationsMethod == null) return Optional.empty();
@@ -115,6 +144,7 @@ public class BTPAnimator {
         return Optional.empty();
     }
 
+    // ===== 注册动画层 =====
     public static void registerAnimationLayers() {
         PlayerAnimationFactory.ANIMATION_DATA_FACTORY.registerFactory(
                 BTP_LOOP_LAYER,
@@ -139,6 +169,50 @@ public class BTPAnimator {
         fireAnimationPlaying = false;
     }
 
+    // ===== 获取 KeyframeAnimationPlayer =====
+    private static KeyframeAnimationPlayer getPlaceholderPlayer(AbstractClientPlayer player, boolean isAiming) {
+        ItemStack gunItem = player.getMainHandItem();
+        String name = getPlaceholderAnimName(gunItem, isAiming);
+        var manager = PlayerAnimatorAssetManager.get();
+        var anim = getAnimationsSafely(manager, PLACEHOLDER_ANIMATION_ID, name).orElse(null);
+        if (anim == null) {
+            BTPLog.LOGGER.warn("Placeholder animation '{}' from '{}' not found", name, PLACEHOLDER_ANIMATION_ID);
+            return null;
+        }
+        return new KeyframeAnimationPlayer(anim);
+    }
+
+    private static KeyframeAnimationPlayer getTiltLoopPlayer(AbstractClientPlayer player) {
+        ItemStack gunItem = player.getMainHandItem();
+        ResourceLocation id = getTiltAnimationId(gunItem);
+        String name = getTiltLoopAnimName(gunItem);
+        var manager = PlayerAnimatorAssetManager.get();
+        var anim = getAnimationsSafely(manager, id, name).orElse(null);
+        if (anim == null) {
+            BTPLog.LOGGER.warn("Tilt loop animation '{}' from '{}' not found", name, id);
+            return null;
+        }
+        return new KeyframeAnimationPlayer(anim);
+    }
+
+    private static void resetState() {
+        currentState = State.IDLE;
+        exitStartTime = 0;
+        isProneRecovery = false;
+        lastFrameShouldPlay = false;
+        crouchTiltClearedByAim = false;
+        TiltAdjust.setUseComplexCorrection(false);
+    }
+
+    /**
+     * 检测玩家是否处于趴下状态（Pose.SWIMMING 且不在游泳）
+     */
+    private static boolean isProne(LocalPlayer player) {
+        if (player == null) return false;
+        return player.getPose() == Pose.SWIMMING && !player.isSwimming();
+    }
+
+    // ===== 核心 Tick 事件 =====
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
@@ -151,12 +225,29 @@ public class BTPAnimator {
 
         IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(player);
 
-        // 窗口期检测：趴下→站立切换
-        boolean isCrawling = operator.isCrawl();
-        if (lastFrameCrawling && !isCrawling) {
-            transitionFrames = TRANSITION_FRAMES_COUNT;
+        // ===== 如果按住据枪键并开镜，则清除动画并返回（让 TaCZ 原生动画播放） =====
+        if (TiltToggleHandler.isHoldingTiltAndAiming()) {
+            var associatedData = PlayerAnimationAccess.getPlayerAssociatedData(player);
+            @SuppressWarnings("unchecked")
+            var loopLayer = (ModifierLayer<IAnimation>) associatedData.get(BTP_LOOP_LAYER);
+            if (loopLayer != null && loopLayer.getAnimation() != null) {
+                TiltAdjust.setUseComplexCorrection(false);
+                loopLayer.setAnimation(null);
+            }
+            clearFireAnimation(player);
+            lastFrameShouldPlay = false;
+            crouchTiltClearedByAim = false;
+            resetState();
+            return;
         }
-        lastFrameCrawling = isCrawling;
+
+        // ===== 使用 Pose.SWIMMING 检测趴下 =====
+        boolean isProne = isProne(player);
+        if (lastFrameProne && !isProne) {
+            transitionFrames = TRANSITION_FRAMES_COUNT;
+            isProneRecovery = true;
+        }
+        lastFrameProne = isProne;
 
         var associatedData = PlayerAnimationAccess.getPlayerAssociatedData(player);
         @SuppressWarnings("unchecked")
@@ -167,49 +258,57 @@ public class BTPAnimator {
         if (transitionFrames > 0) {
             transitionFrames--;
             if (loopLayer.getAnimation() != null) {
+                TiltAdjust.setUseComplexCorrection(false);
                 loopLayer.setAnimation(null);
             }
             clearFireAnimation(player);
             lastFrameShouldPlay = false;
             crouchTiltClearedByAim = false;
+            currentState = State.IDLE;
             return;
         }
 
         // 趴下时清空
-        if (isCrawling) {
+        if (isProne) {
             if (loopLayer.getAnimation() != null) {
+                TiltAdjust.setUseComplexCorrection(false);
                 loopLayer.setAnimation(null);
             }
             clearFireAnimation(player);
             lastFrameShouldPlay = false;
             lastFrameReloading = false;
             crouchTiltClearedByAim = false;
+            resetState();
             return;
         }
 
         // 疾跑时清空（breakSprint = false 时）
         if (!BTPConfig.breakSprint && player.isSprinting()) {
             if (loopLayer.getAnimation() != null) {
+                TiltAdjust.setUseComplexCorrection(false);
                 loopLayer.setAnimation(null);
             }
             clearFireAnimation(player);
             lastFrameShouldPlay = false;
             lastFrameReloading = false;
             crouchTiltClearedByAim = false;
+            resetState();
             return;
         }
 
-        // ========== 物品切换检测 ==========
+        // 物品切换检测
         ItemStack currentGun = player.getMainHandItem();
         boolean gunChanged = !ItemStack.matches(currentGun, lastGunItem);
         if (gunChanged) {
             lastGunItem = currentGun.copy();
             if (TiltToggleHandler.isTilting() || shouldPlayCrouchTilt(player)) {
                 if (loopLayer.getAnimation() != null) {
+                    TiltAdjust.setUseComplexCorrection(false);
                     loopLayer.setAnimation(null);
                 }
                 clearFireAnimation(player);
                 crouchTiltClearedByAim = false;
+                resetState();
                 BTPLog.LOGGER.debug("Gun switched, BTP animation layers cleared.");
             }
         }
@@ -219,12 +318,14 @@ public class BTPAnimator {
         boolean isReloading = gunOperator.getSynReloadState().getStateType().isReloading();
         if (isReloading) {
             if (loopLayer.getAnimation() != null) {
+                TiltAdjust.setUseComplexCorrection(false);
                 loopLayer.setAnimation(null);
             }
             clearFireAnimation(player);
             lastFrameShouldPlay = false;
             lastFrameReloading = true;
             crouchTiltClearedByAim = false;
+            resetState();
             return;
         }
         if (lastFrameReloading) {
@@ -250,92 +351,129 @@ public class BTPAnimator {
         // ========== 判定是否应该播放 BTP 动画 ==========
         boolean isTilting = TiltToggleHandler.isTilting();
         boolean isCrouchTilt = shouldPlayCrouchTilt(player);
+        boolean shouldPlay = isTilting || isCrouchTilt;
 
-        // ===== 新增：蹲下倾斜 + 右键检测逻辑 =====
+        // 蹲下倾斜 + 右键检测逻辑
         if (isCrouchTilt && !isTilting) {
-            // 检测玩家是否正在开镜（右键按住）
             boolean isAiming = operator.isAim() || AimKey.AIM_KEY.isDown();
-
             if (isAiming) {
-                // 按了右键 → 清空 BTP 动画，让 TaCZ 开镜
                 if (loopLayer.getAnimation() != null) {
+                    TiltAdjust.setUseComplexCorrection(false);
                     loopLayer.setAnimation(null);
                 }
                 crouchTiltClearedByAim = true;
+                if (currentState != State.IDLE) {
+                    resetState();
+                }
                 lastFrameShouldPlay = false;
             } else if (crouchTiltClearedByAim) {
-                // 右键松开 → 恢复 BTP 动画
                 crouchTiltClearedByAim = false;
-                ItemStack gunItem = player.getMainHandItem();
-                playTiltAnimation(loopLayer, gunItem);
+                playTiltWithTransition(loopLayer, player, isProneRecovery);
                 lastFrameShouldPlay = true;
             } else {
-                // 正常蹲下倾斜，但确保动画在播放
-                ItemStack gunItem = player.getMainHandItem();
-                playTiltAnimation(loopLayer, gunItem);
+                playTiltWithTransition(loopLayer, player, isProneRecovery);
                 lastFrameShouldPlay = true;
             }
         } else if (isTilting) {
-            // 站立据枪模式（由 TiltToggleHandler 控制）
             if (crouchTiltClearedByAim) {
                 crouchTiltClearedByAim = false;
             }
-            ItemStack gunItem = player.getMainHandItem();
-            playTiltAnimation(loopLayer, gunItem);
+            playTiltWithTransition(loopLayer, player, isProneRecovery);
             lastFrameShouldPlay = true;
         } else {
-            // 没有倾斜 → 清空动画
-            if (lastFrameShouldPlay) {
-                loopLayer.setAnimation(null);
-                clearFireAnimation(player);
+            // ===== 没有倾斜 → 清空动画（带退出过渡） =====
+            if (currentState == State.TILTING) {
+                // 退出据枪，播放占位动画
+                boolean willBeAiming = operator.isAim();
+                KeyframeAnimationPlayer placeholder = getPlaceholderPlayer(player, willBeAiming);
+                if (placeholder != null) {
+                    // 先切换修正器为简单模式，再淡入占位动画
+                    TiltAdjust.setUseComplexCorrection(false);
+                    float transition = BTPConfig.tiltTransitionTimeMs / 1000f;
+                    AbstractFadeModifier fade = AbstractFadeModifier.standardFadeIn((int)(transition * 20), Ease.INOUTSINE);
+                    loopLayer.replaceAnimationWithFade(fade, placeholder);
+                }
+                currentState = State.EXITING;
+                exitStartTime = System.currentTimeMillis();
                 lastFrameShouldPlay = false;
-                crouchTiltClearedByAim = false;
+            } else if (currentState == State.EXITING) {
+                if (System.currentTimeMillis() - exitStartTime > BTPConfig.tiltTransitionTimeMs + 50) {
+                    if (loopLayer.getAnimation() != null) {
+                        TiltAdjust.setUseComplexCorrection(false);
+                        loopLayer.setAnimation(null);
+                    }
+                    currentState = State.IDLE;
+                    lastFrameShouldPlay = false;
+                }
+            } else {
+                if (loopLayer.getAnimation() != null) {
+                    TiltAdjust.setUseComplexCorrection(false);
+                    loopLayer.setAnimation(null);
+                }
+                lastFrameShouldPlay = false;
             }
+            isProneRecovery = false;
         }
     }
 
     /**
-     * 判断蹲下时是否应该播放 BTP 动画
-     * 条件：disableVanillaCrouchTilt == false 且玩家蹲下且持枪
+     * 播放倾斜动画（带过渡逻辑）
+     * @param layer 动画层
+     * @param player 玩家
+     * @param proneRecovery 是否刚从趴下恢复（直接设置，无过渡）
      */
+    private static void playTiltWithTransition(ModifierLayer<IAnimation> layer, AbstractClientPlayer player, boolean proneRecovery) {
+        if (!BTPConfig.enableThirdPersonTiltAnimation) return;
+
+        // 如果正在退出，取消退出
+        if (currentState == State.EXITING) {
+            layer.setAnimation(null);
+            resetState();
+        }
+
+        // 已经在倾斜状态，无需重复播放
+        if (currentState == State.TILTING) {
+            return;
+        }
+
+        KeyframeAnimationPlayer tiltPlayer = getTiltLoopPlayer(player);
+        if (tiltPlayer == null) {
+            BTPLog.LOGGER.warn("Tilt loop animation missing, cannot play.");
+            return;
+        }
+
+        // 趴下恢复：直接设置，无过渡
+        if (proneRecovery) {
+            TiltAdjust.setUseComplexCorrection(true);
+            layer.setAnimation(tiltPlayer);
+            currentState = State.TILTING;
+            isProneRecovery = false;
+            return;
+        }
+
+        // 进入据枪前播放占位动画（作为过渡起点）
+        boolean wasAiming = TiltToggleHandler.getWasAimingBeforeTilt();
+        KeyframeAnimationPlayer placeholder = getPlaceholderPlayer(player, wasAiming);
+        if (placeholder != null) {
+            TiltAdjust.setUseComplexCorrection(false);
+            layer.setAnimation(placeholder);
+        }
+
+        float transition = BTPConfig.tiltTransitionTimeMs / 1000f;
+        AbstractFadeModifier fade = AbstractFadeModifier.standardFadeIn((int)(transition * 20), Ease.INOUTSINE);
+        layer.replaceAnimationWithFade(fade, tiltPlayer);
+        TiltAdjust.setUseComplexCorrection(true);
+        currentState = State.TILTING;
+        isProneRecovery = false;
+    }
+
     private static boolean shouldPlayCrouchTilt(LocalPlayer player) {
         return !BTPConfig.disableVanillaCrouchTilt
                 && player.isCrouching()
                 && IGun.mainHandHoldGun(player);
     }
 
-    private static void playTiltAnimation(ModifierLayer<IAnimation> layer, ItemStack gunItem) {
-        if (!BTPConfig.enableThirdPersonTiltAnimation) return;
-
-        ResourceLocation animId = getTiltAnimationId(gunItem);
-        String animName = getTiltLoopAnimName(gunItem);
-
-        var assetManager = PlayerAnimatorAssetManager.get();
-        if (!assetManager.containsKey(animId)) {
-            BTPLog.LOGGER.warn("Tilt animation resource '{}' not loaded", animId);
-            Minecraft.getInstance().execute(() -> {
-                Player player = Minecraft.getInstance().player;
-                if (player != null) {
-                    BTPTipsHelper.sendMissingTiltAnimationMessage(player);
-                }
-            });
-            return;
-        }
-
-        var current = layer.getAnimation();
-        if (current instanceof KeyframeAnimationPlayer player && player.isActive()) {
-            return;
-        }
-
-        var keyframeAnimation = getAnimationsSafely(assetManager, animId, animName).orElse(null);
-        if (keyframeAnimation == null) {
-            BTPLog.LOGGER.warn("Failed to get KeyframeAnimation for '{}' from '{}'", animName, animId);
-            return;
-        }
-
-        layer.setAnimation(new KeyframeAnimationPlayer(keyframeAnimation));
-    }
-
+    // ===== 射击事件 =====
     @SubscribeEvent
     public static void onGunShoot(GunShootEvent event) {
         if (event.getLogicalSide().isServer()) return;
@@ -345,6 +483,13 @@ public class BTPAnimator {
         if (!(shooter instanceof LocalPlayer player)) return;
         if (player != Minecraft.getInstance().player) return;
         if (Minecraft.getInstance().options.getCameraType().isFirstPerson()) return;
+
+        IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(player);
+
+        // ===== 如果正在开镜，则直接返回，让 TaCZ 原生开火动画播放 =====
+        if (operator.isAim()) {
+            return;
+        }
 
         boolean shouldPlayShoot = TiltToggleHandler.isTilting() || shouldPlayCrouchTilt(player);
         if (!shouldPlayShoot) return;
@@ -392,9 +537,11 @@ public class BTPAnimator {
         var layer = (ModifierLayer<IAnimation>) associatedData.get(BTP_LOOP_LAYER);
         if (layer == null) return;
 
+        TiltAdjust.setUseComplexCorrection(false);
         layer.setAnimation(null);
         clearFireAnimation(player);
         lastFrameShouldPlay = false;
         crouchTiltClearedByAim = false;
+        resetState();
     }
 }

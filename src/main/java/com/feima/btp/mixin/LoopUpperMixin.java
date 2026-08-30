@@ -9,6 +9,7 @@ import com.tacz.guns.compat.playeranimator.animation.AnimationManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.Pose;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -18,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class LoopUpperMixin {
 
     private static final int TRANSITION_FRAMES_COUNT = 8;
-    private static boolean lastFrameCrawling = false;
+    private static boolean lastFrameProne = false;
     private static int transitionFrames = 0;
 
     @Inject(
@@ -32,15 +33,22 @@ public class LoopUpperMixin {
         if (player != Minecraft.getInstance().player) return;
         if (!BTPConfig.enableThirdPersonTiltAnimation) return;
 
+        // ===== 如果按住据枪键并开镜，则不拦截（让 TaCZ 开镜动画播放） =====
+        if (TiltToggleHandler.isHoldingTiltAndAiming()) {
+            return;
+        }
+
         LocalPlayer localPlayer = (LocalPlayer) player;
         IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(localPlayer);
-        boolean isCrawling = operator.isCrawl();
+
+        // ===== 修改：使用 Pose.SWIMMING 检测趴下 =====
+        boolean isProne = localPlayer.getPose() == Pose.SWIMMING && !localPlayer.isSwimming();
 
         // 检测趴下→站立切换
-        if (lastFrameCrawling && !isCrawling) {
+        if (lastFrameProne && !isProne) {
             transitionFrames = TRANSITION_FRAMES_COUNT;
         }
-        lastFrameCrawling = isCrawling;
+        lastFrameProne = isProne;
 
         // 过渡窗口内不拦截
         if (transitionFrames > 0) {
@@ -49,12 +57,11 @@ public class LoopUpperMixin {
         }
 
         // 趴下时完全不拦截
-        if (isCrawling) {
+        if (isProne) {
             return;
         }
 
-        // ===== 新增：疾跑时不拦截（breakSprint = false 时） =====
-        // 当 breakSprint 为 false 且玩家正在疾跑时，BTP 不应接管动画
+        // 疾跑时不拦截（breakSprint = false 时）
         if (!BTPConfig.breakSprint && localPlayer.isSprinting()) {
             return;
         }

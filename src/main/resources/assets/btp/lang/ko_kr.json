@@ -18,6 +18,7 @@
   "config.btp.resetToAimOnItemSwitch": "아이템 전환 시 조준 모드로 초기화",
   "config.btp.enableThirdPersonTiltAnimation": "3인칭 전술적 자세 애니메이션 활성화",
   "config.btp.tacticalCrosshair": "전술적 자세 시 조준선 유형",
+  "config.btp.tiltTransitionTimeMs": "자세 전환 시간 (밀리초)",
 
   "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs 호환성 실패! Better Tactical Presentation 또는 TaCZ:Labs를 업데이트하세요.",
   "message.btp.missing_tilt_animation": "§eBetter Tactical Presentation: 전술적 자세 애니메이션을 찾을 수 없습니다. 리소스 팩을 확인하세요.",

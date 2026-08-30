@@ -11,22 +11,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
 
-/**
- * Keeps the tactical pose aligned with the player's view without destroying the
- * authored arm orientation.
- *
- * <p>A normal {@link AdjustmentModifier} adds pitch directly to the arm's X
- * Euler angle. That only works for arms with no yaw or roll. The tactical pose
- * has a large roll, so direct addition rotates around an already tilted local
- * axis and makes the arms swing behind the player at extreme view pitches.</p>
- *
- * <p>This modifier pre-multiplies the animated orientation by view pitch. In
- * other words, the complete authored arm pose is rotated around the player's
- * horizontal axis, then converted back to the Z-Y-X Euler angles used by
- * {@code ModelPart}.</p>
- */
 public class TiltAdjust extends AdjustmentModifier {
     private static final float GIMBAL_EPSILON = 1.0e-5f;
+
+    // 模式标志：true=复杂修正（据枪），false=简单修正（占位/普通）
+    private static boolean useComplexCorrection = false;
+
+    public static void setUseComplexCorrection(boolean use) {
+        useComplexCorrection = use;
+    }
 
     private final AbstractClientPlayer player;
 
@@ -45,28 +38,40 @@ public class TiltAdjust extends AdjustmentModifier {
                                          float tickDelta,
                                          @NotNull Vec3f value0) {
         Vec3f animated = super.get3DTransform(partName, type, tickDelta, value0);
-        // The modifier is registered for the whole player lifetime. Do not
-        // apply a view rotation while the tactical animation layer is idle.
         if (type != TransformType.ROTATION || !isActive() || shouldPauseViewAdjustment()) {
             return animated;
         }
 
-        // ========== 强制 fade = 1，彻底移除淡入淡出影响 ==========
-        float fade = 1.0f; // 始终全强度应用
-
+        float fade = 1.0f;
         float partialTick = Minecraft.getInstance().getPartialTick();
         float pitch = Mth.wrapDegrees(Mth.lerp(partialTick, player.xRotO, player.getXRot()));
         float pitchRadians = pitch * Mth.DEG_TO_RAD * fade;
 
-        return switch (partName) {
-            case "rightArm", "leftArm", "head" -> {
-                if (partName.equals("head") && isVisuallyCrawling()) {
-                    yield applyCrawlingHeadYaw(animated, partialTick, fade);
-                }
-                yield composeParentPitch(animated, pitchRadians);
+        // ---- 手臂修正 ----
+        if ("rightArm".equals(partName)) {
+            // 右手：始终使用复杂矩阵分解（无论据枪或占位）
+            return composeParentPitch(animated, pitchRadians);
+        }
+
+        if ("leftArm".equals(partName)) {
+            if (useComplexCorrection) {
+                // 据枪模式 → 复杂
+                return composeParentPitch(animated, pitchRadians);
+            } else {
+                // 占位/普通模式 → 简单附加 pitch
+                return animated.add(new Vec3f(pitchRadians, 0, 0));
             }
-            default -> animated;
-        };
+        }
+
+        // ---- 头部：始终简单附加（额外处理爬行 yaw） ----
+        if ("head".equals(partName)) {
+            if (isVisuallyCrawling()) {
+                return applyCrawlingHeadYaw(animated, partialTick, fade);
+            }
+            return animated.add(new Vec3f(pitchRadians, 0, 0));
+        }
+
+        return animated;
     }
 
     private boolean shouldPauseViewAdjustment() {
@@ -86,8 +91,7 @@ public class TiltAdjust extends AdjustmentModifier {
     }
 
     /**
-     * Computes {@code Rx(pitch) * Rz(roll) * Ry(yaw) * Rx(armPitch)} and
-     * decomposes the result back into the ModelPart Z-Y-X Euler convention.
+     * 复杂矩阵分解：Rx(pitch) * Rz(roll) * Ry(yaw) * Rx(armPitch) → Z-Y-X Euler
      */
     static Vec3f composeParentPitch(Vec3f rotation, float pitch) {
         float armPitch = rotation.getX();
@@ -103,7 +107,6 @@ public class TiltAdjust extends AdjustmentModifier {
         float sinPitch = Mth.sin(pitch);
         float cosPitch = Mth.cos(pitch);
 
-        // Only the matrix entries needed for Z-Y-X decomposition are built.
         float r00 = cosZ * cosY;
         float r01 = cosZ * sinY * sinX - sinZ * cosX;
         float r10 = cosPitch * sinZ * cosY + sinPitch * sinY;
@@ -124,7 +127,6 @@ public class TiltAdjust extends AdjustmentModifier {
             composedArmPitch = (float) Math.atan2(r21, r22);
             composedRoll = (float) Math.atan2(r10, r00);
         } else {
-            // At the singularity only one combined X/Z angle is observable.
             composedArmPitch = 0.0f;
             composedRoll = (float) Math.atan2(-r01, r11);
         }

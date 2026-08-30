@@ -27,6 +27,9 @@ public class BTPConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_THIRD_PERSON_TILT_ANIMATION;
     public static final ForgeConfigSpec.ConfigValue<String> TACTICAL_CROSSHAIR;
 
+    // ===== 新增：过渡时间配置项（放在 Animation settings 子分类中） =====
+    public static final ForgeConfigSpec.IntValue TILT_TRANSITION_TIME_MS;
+
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         builder.comment("Better Tactical Presentation Settings").push("general");
@@ -90,6 +93,12 @@ public class BTPConfig {
                 .comment("If enabled, third-person tilt animation will play when in tactical tilt. Disable this if you prefer to keep the default TACZ third-person pose.")
                 .translation("config.btp.enableThirdPersonTiltAnimation")
                 .define("enableThirdPersonTiltAnimation", true);
+
+        // ===== 新增配置项：过渡时间 =====
+        TILT_TRANSITION_TIME_MS = builder
+                .comment("Transition time for tilt animation fade-in/out in milliseconds. (Default: 250)")
+                .translation("config.btp.tiltTransitionTimeMs")
+                .defineInRange("tiltTransitionTimeMs", 250, 0, 1000);
         builder.pop();
 
         builder.pop();
@@ -107,6 +116,9 @@ public class BTPConfig {
     public static boolean resetToAimOnItemSwitch = true;
     public static boolean enableThirdPersonTiltAnimation = true;
     public static String tacticalCrosshair = "DOT_1";
+
+    // ===== 新增静态变量 =====
+    public static int tiltTransitionTimeMs = 250;
 
     private static CrosshairType cachedCrosshairType = null;
     private static String cachedCrosshairConfig = null;
@@ -156,6 +168,8 @@ public class BTPConfig {
         resetToAimOnItemSwitch = RESET_TO_AIM_ON_ITEM_SWITCH.get();
         enableThirdPersonTiltAnimation = ENABLE_THIRD_PERSON_TILT_ANIMATION.get();
         tacticalCrosshair = TACTICAL_CROSSHAIR.get();
+        // ===== 新增：加载过渡时间配置 =====
+        tiltTransitionTimeMs = TILT_TRANSITION_TIME_MS.get();
         cachedCrosshairConfig = null;
         cachedCrosshairType = null;
     }
@@ -194,6 +208,8 @@ public class BTPConfig {
                         \t[general.Animation settings]
                         \t#If enabled, third-person tilt animation will play when in tactical tilt. Disable this if you prefer to keep the default TACZ third-person pose.
                         \tenableThirdPersonTiltAnimation = true
+                        \t#Transition time for tilt animation fade-in/out in milliseconds. (Default: 250)
+                        \ttiltTransitionTimeMs = 250
                         """;
                 Files.writeString(configPath, defaultConfig);
                 BTPLog.LOGGER.info("Default config file created: {}", configPath);

@@ -18,6 +18,7 @@
   "config.btp.resetToAimOnItemSwitch": "Сбрасывать в режим прицеливания при смене предмета",
   "config.btp.enableThirdPersonTiltAnimation": "Включить анимацию тактического наклона от третьего лица",
   "config.btp.tacticalCrosshair": "Тип прицела в тактическом наклоне",
+  "config.btp.tiltTransitionTimeMs": "Время перехода в наклон (мс)",
 
   "message.btp.taczlabs_reflection_failed": "§cОшибка совместимости с TaCZ:Labs! Обновите Better Tactical Presentation или TaCZ:Labs.",
   "message.btp.missing_tilt_animation": "§eBetter Tactical Presentation: Анимация тактического наклона не найдена. Проверьте набор ресурсов.",

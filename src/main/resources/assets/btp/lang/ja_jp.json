@@ -18,6 +18,7 @@
   "config.btp.resetToAimOnItemSwitch": "アイテム切り替え時にエイムモードにリセット",
   "config.btp.enableThirdPersonTiltAnimation": "三人称リーンアニメーションを有効化",
   "config.btp.tacticalCrosshair": "タクティカルリーン時クロスヘアタイプ",
+  "config.btp.tiltTransitionTimeMs": "リーン移行時間（ミリ秒）",
 
   "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs との互換性に失敗しました！Better Tactical Presentation または TaCZ:Labs を更新してください。",
   "message.btp.missing_tilt_animation": "§eBetter Tactical Presentation: リーンアニメーションが見つかりません。リソースパックを確認してください。",

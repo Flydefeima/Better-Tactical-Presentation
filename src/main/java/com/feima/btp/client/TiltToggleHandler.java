@@ -52,11 +52,31 @@ public class TiltToggleHandler {
     private static volatile boolean suppressRightClick = false;
     private static volatile boolean rightLongPressTiltTriggered = false;
     private static volatile boolean wasAimBeforePress = false;
-    private static volatile boolean holdTiltActive = false;
+    private static volatile boolean holdTiltActive = false; // 保持不变
 
-    private static ItemStack lastMainHand = ItemStack.EMPTY;
-    private static int lastSelectedSlot = -1;
-    private static ScheduledFuture<?> tiltTimerTask = null;
+    // ===== 暴露 holdTiltActive 的 getter =====
+    public static boolean isHoldTiltActive() {
+        return holdTiltActive;
+    }
+
+    // ===== 新增：判断是否按住据枪键且开镜中 =====
+    public static boolean isHoldingTiltAndAiming() {
+        if (!holdTiltActive) return false;
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return false;
+        IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(player);
+        return operator.isAim() || AimKey.AIM_KEY.isDown();
+    }
+
+    private static volatile boolean wasAimingBeforeTilt = false;
+
+    public static boolean getWasAimingBeforeTilt() {
+        return wasAimingBeforeTilt;
+    }
+
+    public static void resetWasAimingBeforeTilt() {
+        wasAimingBeforeTilt = false;
+    }
 
     public static boolean isTilting() {
         LocalPlayer player = Minecraft.getInstance().player;
@@ -105,6 +125,7 @@ public class TiltToggleHandler {
         lastMainHand = ItemStack.EMPTY;
         lastSelectedSlot = -1;
         TaCZLabsCompat.setCrosshairEnabled(true);
+        wasAimingBeforeTilt = false;
     }
 
     private static void forceStopAllActions(LocalPlayer player) {
@@ -121,6 +142,7 @@ public class TiltToggleHandler {
         suppressRightClick = true;
         TaCZLabsCompat.setCrosshairEnabled(true);
         sendTiltStateToServer(false);
+        wasAimingBeforeTilt = false;
     }
 
     private static void applyAimMode(boolean enable) {
@@ -150,14 +172,22 @@ public class TiltToggleHandler {
         LocalPlayer player = mc.player;
         if (!isHoldingGun(player)) return;
 
-        if (enable && BTPConfig.breakSprint) {
-            player.setSprinting(false);
+        if (enable) {
+            wasAimingBeforeTilt = IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
+
+            if (BTPConfig.breakSprint) {
+                player.setSprinting(false);
+            }
+            IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
+            AimKey.AIM_KEY.setDown(false);
+            isTilting = true;
+            TaCZLabsCompat.setCrosshairEnabled(false);
+            sendTiltStateToServer(true);
+        } else {
+            isTilting = false;
+            TaCZLabsCompat.setCrosshairEnabled(true);
+            sendTiltStateToServer(false);
         }
-        IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
-        AimKey.AIM_KEY.setDown(false);
-        isTilting = enable;
-        TaCZLabsCompat.setCrosshairEnabled(!enable);
-        sendTiltStateToServer(enable);
     }
 
     private static void sendTiltStateToServer(boolean tilting) {
@@ -180,6 +210,8 @@ public class TiltToggleHandler {
 
         if (rightPressed && isHoldingGun(player)) {
             if (mode == 0 && newMode == 1) {
+                wasAimingBeforeTilt = IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
+                
                 IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
                 AimKey.AIM_KEY.setDown(false);
                 if (BTPConfig.breakSprint) {
@@ -458,4 +490,9 @@ public class TiltToggleHandler {
             }
         }
     }
+
+    // ========== 原有私有变量 ==========
+    private static ItemStack lastMainHand = ItemStack.EMPTY;
+    private static int lastSelectedSlot = -1;
+    private static ScheduledFuture<?> tiltTimerTask = null;
 }

@@ -18,6 +18,7 @@
   "config.btp.resetToAimOnItemSwitch": "切換物品後重置為瞄準模式",
   "config.btp.enableThirdPersonTiltAnimation": "啟用第三人稱據槍動畫",
   "config.btp.tacticalCrosshair": "戰術據槍準星類型",
+  "config.btp.tiltTransitionTimeMs": "據槍過渡時間（毫秒）",
 
   "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs 兼容失敗！請更新更好的戰術據槍或 TaCZ:Labs。",
   "message.btp.missing_tilt_animation": "§e更好的戰術據槍：未找到據槍動畫，請檢查資源包。",
