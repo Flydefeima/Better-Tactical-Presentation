@@ -1,7 +1,7 @@
 package com.feima.btp.mixin;
 
 import com.feima.btp.BTPMod;
-import com.feima.btp.client.LeanToggleHandler;
+import com.feima.btp.client.TiltToggleHandler;
 import com.feima.btp.config.BTPConfig;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.client.resource.GunDisplayInstance;
@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = AnimationManager.class, remap = false)
-public class PlayLoopUpperAnimationMixin {
+public class LoopUpperMixin {
 
     private static final int TRANSITION_FRAMES_COUNT = 8;
     private static boolean lastFrameCrawling = false;
@@ -30,7 +30,7 @@ public class PlayLoopUpperAnimationMixin {
     private static void btp$interceptLoopUpperAnimation(AbstractClientPlayer player, GunDisplayInstance display, float limbSwingAmount, CallbackInfo ci) {
         if (!BTPMod.isPlayerAnimatorLoaded) return;
         if (player != Minecraft.getInstance().player) return;
-        if (!BTPConfig.enableThirdPersonLeanAnimation) return;
+        if (!BTPConfig.enableThirdPersonTiltAnimation) return;
 
         LocalPlayer localPlayer = (LocalPlayer) player;
         IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(localPlayer);
@@ -60,7 +60,7 @@ public class PlayLoopUpperAnimationMixin {
         }
 
         // 站立据枪时 BTP 接管
-        if (LeanToggleHandler.isLeaning()) {
+        if (TiltToggleHandler.isTilting()) {
             ci.cancel();
         }
     }

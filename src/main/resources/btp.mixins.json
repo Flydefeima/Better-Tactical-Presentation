@@ -6,10 +6,10 @@
   "refmap": "btp.refmap.json",
   "mixins": [
     "CacheValueMixin",
-    "GunAnimationStateContextMixin",
+    "GunStateMixin",
     "SprintBlockMixin",
-    "RenderCrosshairEventMixin",
-    "PlayLoopUpperAnimationMixin"
+    "CrosshairMixin",
+    "LoopUpperMixin"
   ],
   "client": [],
   "server": [],

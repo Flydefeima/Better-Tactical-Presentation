@@ -25,18 +25,18 @@ import java.util.Optional;
  * horizontal axis, then converted back to the Z-Y-X Euler angles used by
  * {@code ModelPart}.</p>
  */
-public class BTPLeanAdjustmentModifier extends AdjustmentModifier {
+public class TiltAdjust extends AdjustmentModifier {
     private static final float GIMBAL_EPSILON = 1.0e-5f;
 
     private final AbstractClientPlayer player;
 
-    private BTPLeanAdjustmentModifier(AbstractClientPlayer player) {
+    private TiltAdjust(AbstractClientPlayer player) {
         super(partName -> Optional.empty());
         this.player = player;
     }
 
     public static AdjustmentModifier getModifier(AbstractClientPlayer player) {
-        return new BTPLeanAdjustmentModifier(player);
+        return new TiltAdjust(player);
     }
 
     @Override

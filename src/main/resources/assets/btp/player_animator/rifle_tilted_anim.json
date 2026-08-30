@@ -1,7 +1,7 @@
 {
 	"format_version": "1.8.0",
 	"animations": {
-		"tilted_gun": {
+		"rifle_tilted_gun": {
 			"loop": true,
 			"animation_length": 3.2,
 			"extraData": {
@@ -322,7 +322,7 @@
 				}
 			}
 		},
-		"tilted_gun_fire": {
+		"rifle_tilted_gun_fire": {
 			"animation_length": 0.35,
 			"extraData": {
 				"name": "tilted_gun_fire"

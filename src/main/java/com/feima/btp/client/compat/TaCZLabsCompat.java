@@ -3,20 +3,29 @@ package com.feima.btp.client.compat;
 import com.feima.btp.BTPLog;
 import com.feima.btp.BTPMod;
 import com.feima.btp.config.BTPConfig;
+import com.feima.btp.util.BTPTipsHelper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-public class TaczLabsCompatHelper {
+public class TaCZLabsCompat {
 
     private static boolean reflectionReady = false;
     private static boolean reflectionFailed = false;
-    private static boolean messageSent = false;
+    // ===== 移除：private static boolean messageSent = false; =====
     private static Object enableCrosshairFieldValue;
     private static Method setMethod;
+
+    // 重置反射状态，用于每次进入世界时重新尝试
+    public static void reset() {
+        reflectionReady = false;
+        reflectionFailed = false;
+        // ===== 移除：messageSent = false; =====
+        enableCrosshairFieldValue = null;
+        setMethod = null;
+    }
 
     private static void initReflection() {
         if (reflectionReady || reflectionFailed) return;
@@ -29,19 +38,14 @@ public class TaczLabsCompatHelper {
             reflectionReady = true;
         } catch (Exception e) {
             reflectionFailed = true;
-            BTPLog.LOGGER.warn("TaCZ:Labs reflection permanently disabled: {}", e.getMessage());
-            if (!messageSent) {
-                Minecraft.getInstance().execute(() -> {
-                    Player player = Minecraft.getInstance().player;
-                    if (player != null) {
-                        player.displayClientMessage(
-                            Component.translatable("message.btp.taczlabs_reflection_failed"),
-                            false
-                        );
-                        messageSent = true;
-                    }
-                });
-            }
+            BTPLog.LOGGER.warn("TaCZ:Labs reflection failed: {}", e.getMessage());
+            // ===== 直接调用 BTPTipsHelper，由它统一去重 =====
+            Minecraft.getInstance().execute(() -> {
+                Player player = Minecraft.getInstance().player;
+                if (player != null) {
+                    BTPTipsHelper.sendTaczLabsReflectionFailedMessage(player);
+                }
+            });
         }
     }
 

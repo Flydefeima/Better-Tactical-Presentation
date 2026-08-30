@@ -1,6 +1,6 @@
 package com.feima.btp.mixin;
 
-import com.feima.btp.client.LeanToggleHandler;
+import com.feima.btp.client.TiltToggleHandler;
 import com.feima.btp.config.BTPConfig;
 import com.tacz.guns.client.animation.statemachine.GunAnimationStateContext;
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = GunAnimationStateContext.class, remap = false)
-public class GunAnimationStateContextMixin {
+public class GunStateMixin {
 
     @Inject(
             method = "shouldSlide",
@@ -18,8 +18,8 @@ public class GunAnimationStateContextMixin {
             remap = false
     )
     private void btp$shouldSlide(CallbackInfoReturnable<Boolean> cir) {
-        if (BTPConfig.disableVanillaCrouchLean && cir.getReturnValue()) {
-            if (LeanToggleHandler.isLeaning()) {
+        if (BTPConfig.disableVanillaCrouchTilt && cir.getReturnValue()) {
+            if (TiltToggleHandler.isTilting()) {
                 cir.setReturnValue(true);
             } else {
                 cir.setReturnValue(false);
@@ -31,7 +31,7 @@ public class GunAnimationStateContextMixin {
             return;
         }
 
-        if (LeanToggleHandler.isLeaning()) {
+        if (TiltToggleHandler.isTilting()) {
             cir.setReturnValue(true);
         }
     }

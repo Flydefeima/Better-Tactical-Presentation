@@ -1,24 +1,25 @@
 {
-  "key.btp.toggle_lean": "Toggle Aim/Lean Mode",
-  "key.btp.hold_lean": "Hold to Lean",
+  "key.btp.toggle_tilt": "Toggle Aim/Tilt Mode",
+  "key.btp.hold_tilt": "Hold to Tilt",
   "key.categories.btp": "Better Tactical Presentation",
-  "message.btp.mode.aim": "Tactical Lean Off",
-  "message.btp.mode.lean": "Tactical Lean On",
+  "message.btp.mode.aim": "Tactical Tilt Off",
+  "message.btp.mode.tilt": "Tactical Tilt On",
   "message.btp.aim_on": "Aim Mode",
-  "message.btp.lean_on": "Tactical Lean",
+  "message.btp.tilt_on": "Tactical Tilt",
 
   "config.btp.interruptOnToggle": "Interrupt on Toggle",
   "config.btp.longPressThreshold": "Long Press Threshold",
-  "config.btp.enableLongPressLean": "Enable Right-Click Long Press Lean",
-  "config.btp.disableVanillaCrouchLean": "Disable Vanilla Crouch Lean",
-  "config.btp.showLongPressLeanMessages": "Show Right-Click Lean Messages",
+  "config.btp.enableLongPressTilt": "Enable Right-Click Long Press Tilt",
+  "config.btp.disableVanillaCrouchTilt": "Disable Vanilla Crouch Tilt",
+  "config.btp.showLongPressTiltMessages": "Show Right-Click Tilt Messages",
   "config.btp.breakSprint": "Break Sprint",
-  "config.btp.leanSpreadMultiplier": "Lean Spread Multiplier",
+  "config.btp.tiltSpreadMultiplier": "Tilt Spread Multiplier",
   "config.btp.compatTaczLabsCrosshair": "TaCZ:Labs Crosshair Compatibility",
   "config.btp.resetToAimOnItemSwitch": "Reset to Aim on Item Switch",
-  "config.btp.enableThirdPersonLeanAnimation": "Enable Third-Person Lean Animation",
+  "config.btp.enableThirdPersonTiltAnimation": "Enable Third-Person Tilt Animation",
   "config.btp.tacticalCrosshair": "Tactical Crosshair Type",
+  
   "message.btp.taczlabs_reflection_failed": "§cTaCZ:Labs compatibility failed! Please update Better Tactical Presentation or TaCZ:Labs.",
-  "message.btp.missing_lean_animation": "§eBetter Tactical Presentation: Lean animation not found. Please check your resource pack.",
-  "message.btp.independent_anim_load_failed": "§cFailed to load independent lean animation. PlayerAnimator may be incompatible."
+  "message.btp.missing_tilt_animation": "§eBetter Tactical Presentation: Tilt animation not found. Please check your resource pack.",
+  "message.btp.independent_anim_load_failed": "§cFailed to load independent tilt animation. PlayerAnimator may be incompatible."
 }

@@ -1,6 +1,6 @@
 package com.feima.btp.mixin;
 
-import com.feima.btp.client.LeanToggleHandler;
+import com.feima.btp.client.TiltToggleHandler;
 import com.feima.btp.config.BTPConfig;
 import com.tacz.guns.client.event.RenderCrosshairEvent;
 import com.tacz.guns.client.renderer.crosshair.CrosshairType;
@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(value = RenderCrosshairEvent.class, remap = false)
-public class RenderCrosshairEventMixin {
+public class CrosshairMixin {
 
     @Redirect(
             method = "renderCrosshair",
@@ -21,7 +21,7 @@ public class RenderCrosshairEventMixin {
             remap = false
     )
     private static ResourceLocation redirectCrosshairLocation(CrosshairType originalType) {
-        if (!LeanToggleHandler.isLeaning()) {
+        if (!TiltToggleHandler.isTilting()) {
             return CrosshairType.getTextureLocation(originalType);
         }
 

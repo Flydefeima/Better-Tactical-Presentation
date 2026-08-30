@@ -1,15 +1,17 @@
 package com.feima.btp.client;
 
 import com.feima.btp.BTPMod;
-import com.feima.btp.client.compat.TaczLabsCompatHelper;
+import com.feima.btp.client.compat.TaCZLabsCompat;
 import com.feima.btp.config.BTPConfig;
+import com.feima.btp.network.NetworkHandler;
+import com.feima.btp.network.ServerboundTiltPacket;
+import com.feima.btp.util.BTPTipsHelper;
 import com.feima.btp.util.InputHelper;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.client.input.AimKey;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
@@ -24,14 +26,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import static com.feima.btp.client.ClientModEvents.HOLD_LEAN_KEY;
-import static com.feima.btp.client.ClientModEvents.TOGGLE_LEAN_KEY;
+import static com.feima.btp.client.BTPEventHandler.HOLD_TILT_KEY;
+import static com.feima.btp.client.BTPEventHandler.TOGGLE_TILT_KEY;
 
 @Mod.EventBusSubscriber(modid = BTPMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
-public class LeanToggleHandler {
+public class TiltToggleHandler {
 
     private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "BTP-LeanTimer");
+        Thread t = new Thread(r, "BTP-TiltTimer");
         t.setDaemon(true);
         return t;
     });
@@ -46,29 +48,29 @@ public class LeanToggleHandler {
 
     private static volatile int mode = 0;
     private static volatile boolean rightPressed = false;
-    private static volatile boolean isLeaning = false;
+    private static volatile boolean isTilting = false;
     private static volatile boolean suppressRightClick = false;
-    private static volatile boolean rightLongPressTriggered = false;
+    private static volatile boolean rightLongPressTiltTriggered = false;
     private static volatile boolean wasAimBeforePress = false;
-    private static volatile boolean holdLeanActive = false;
+    private static volatile boolean holdTiltActive = false;
 
     private static ItemStack lastMainHand = ItemStack.EMPTY;
     private static int lastSelectedSlot = -1;
-    private static ScheduledFuture<?> leanTimerTask = null;
+    private static ScheduledFuture<?> tiltTimerTask = null;
 
-    public static boolean isLeaning() {
+    public static boolean isTilting() {
         LocalPlayer player = Minecraft.getInstance().player;
         if (!isHoldingGun(player)) return false;
 
-        if (holdLeanActive) {
+        if (holdTiltActive) {
             return true;
         }
 
-        if (BTPConfig.enableLongPressLean) {
-            return isLeaning && rightPressed;
+        if (BTPConfig.enableLongPressTilt) {
+            return isTilting && rightPressed;
         }
 
-        return isLeaning && rightPressed && mode == 1;
+        return isTilting && rightPressed && mode == 1;
     }
 
     private static boolean isHoldingGun(LocalPlayer player) {
@@ -85,39 +87,40 @@ public class LeanToggleHandler {
         return currentMainHand.getItem() != lastMainHand.getItem();
     }
 
-    private static void cancelLeanTimer() {
-        if (leanTimerTask != null && !leanTimerTask.isDone()) {
-            leanTimerTask.cancel(false);
-            leanTimerTask = null;
+    private static void cancelTiltTimer() {
+        if (tiltTimerTask != null && !tiltTimerTask.isDone()) {
+            tiltTimerTask.cancel(false);
+            tiltTimerTask = null;
         }
     }
 
     private static void resetAllStates() {
-        cancelLeanTimer();
+        cancelTiltTimer();
         mode = 0;
         rightPressed = false;
-        isLeaning = false;
+        isTilting = false;
         suppressRightClick = false;
-        rightLongPressTriggered = false;
-        holdLeanActive = false;
+        rightLongPressTiltTriggered = false;
+        holdTiltActive = false;
         lastMainHand = ItemStack.EMPTY;
         lastSelectedSlot = -1;
-        TaczLabsCompatHelper.setCrosshairEnabled(true);
+        TaCZLabsCompat.setCrosshairEnabled(true);
     }
 
     private static void forceStopAllActions(LocalPlayer player) {
         if (player == null) return;
-        isLeaning = false;
+        isTilting = false;
         IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
         AimKey.AIM_KEY.setDown(false);
         rightPressed = false;
-        cancelLeanTimer();
-        rightLongPressTriggered = false;
-        holdLeanActive = false;
+        cancelTiltTimer();
+        rightLongPressTiltTriggered = false;
+        holdTiltActive = false;
         InputHelper.clearRightMouseButton();
         Minecraft.getInstance().options.keyUse.setDown(false);
         suppressRightClick = true;
-        TaczLabsCompatHelper.setCrosshairEnabled(true);
+        TaCZLabsCompat.setCrosshairEnabled(true);
+        sendTiltStateToServer(false);
     }
 
     private static void applyAimMode(boolean enable) {
@@ -128,19 +131,21 @@ public class LeanToggleHandler {
         boolean currentAim = IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
 
         if (enable && !currentAim) {
-            isLeaning = false;
+            isTilting = false;
             IClientPlayerGunOperator.fromLocalPlayer(player).aim(true);
             AimKey.AIM_KEY.setDown(true);
-            TaczLabsCompatHelper.setCrosshairEnabled(true);
+            TaCZLabsCompat.setCrosshairEnabled(true);
+            sendTiltStateToServer(false);
         } else if (!enable && currentAim) {
-            isLeaning = false;
+            isTilting = false;
             IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
             AimKey.AIM_KEY.setDown(false);
-            TaczLabsCompatHelper.setCrosshairEnabled(true);
+            TaCZLabsCompat.setCrosshairEnabled(true);
+            sendTiltStateToServer(false);
         }
     }
 
-    private static void applyLeanMode(boolean enable) {
+    private static void applyTiltMode(boolean enable) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (!isHoldingGun(player)) return;
@@ -150,8 +155,15 @@ public class LeanToggleHandler {
         }
         IClientPlayerGunOperator.fromLocalPlayer(player).aim(false);
         AimKey.AIM_KEY.setDown(false);
-        isLeaning = enable;
-        TaczLabsCompatHelper.setCrosshairEnabled(!enable);
+        isTilting = enable;
+        TaCZLabsCompat.setCrosshairEnabled(!enable);
+        sendTiltStateToServer(enable);
+    }
+
+    private static void sendTiltStateToServer(boolean tilting) {
+        if (Minecraft.getInstance().player != null) {
+            NetworkHandler.CHANNEL.sendToServer(new ServerboundTiltPacket(tilting));
+        }
     }
 
     private static void toggleMode(LocalPlayer player) {
@@ -162,10 +174,7 @@ public class LeanToggleHandler {
         if (BTPConfig.interruptOnToggle) {
             forceStopAllActions(player);
             mode = newMode;
-            player.displayClientMessage(
-                    Component.translatable(newMode == 0 ? "message.btp.mode.aim" : "message.btp.mode.lean"),
-                    true
-            );
+            BTPTipsHelper.sendModeSwitchMessage(player, newMode == 1);
             return;
         }
 
@@ -176,49 +185,48 @@ public class LeanToggleHandler {
                 if (BTPConfig.breakSprint) {
                     player.setSprinting(false);
                 }
-                isLeaning = true;
-                TaczLabsCompatHelper.setCrosshairEnabled(false);
+                isTilting = true;
+                TaCZLabsCompat.setCrosshairEnabled(false);
+                sendTiltStateToServer(true);
             } else if (mode == 1 && newMode == 0) {
-                isLeaning = false;
-                TaczLabsCompatHelper.setCrosshairEnabled(true);
+                isTilting = false;
+                TaCZLabsCompat.setCrosshairEnabled(true);
                 IClientPlayerGunOperator.fromLocalPlayer(player).aim(true);
                 AimKey.AIM_KEY.setDown(true);
+                sendTiltStateToServer(false);
             }
         }
 
         mode = newMode;
         InputHelper.clearRightMouseButton();
         Minecraft.getInstance().options.keyUse.setDown(false);
-        player.displayClientMessage(
-                Component.translatable(newMode == 0 ? "message.btp.mode.aim" : "message.btp.mode.lean"),
-                true
-        );
+        BTPTipsHelper.sendModeSwitchMessage(player, newMode == 1);
     }
 
-    private static void handleHoldLeanKey(int action, LocalPlayer player) {
+    private static void handleHoldTiltKey(int action, LocalPlayer player) {
         if (!isHoldingGun(player)) {
-            if (holdLeanActive) {
-                holdLeanActive = false;
+            if (holdTiltActive) {
+                holdTiltActive = false;
                 if (!rightPressed) {
-                    applyLeanMode(false);
+                    applyTiltMode(false);
                 }
             }
             return;
         }
 
         if (action == GLFW.GLFW_PRESS) {
-            holdLeanActive = true;
-            applyLeanMode(true);
+            holdTiltActive = true;
+            applyTiltMode(true);
         } else if (action == GLFW.GLFW_RELEASE) {
-            holdLeanActive = false;
+            holdTiltActive = false;
 
             if (rightPressed) {
-                if (mode == 0 && !(BTPConfig.enableLongPressLean && rightLongPressTriggered)) {
+                if (mode == 0 && !(BTPConfig.enableLongPressTilt && rightLongPressTiltTriggered)) {
                     applyAimMode(true);
                 }
             } else {
-                if (isLeaning) {
-                    applyLeanMode(false);
+                if (isTilting) {
+                    applyTiltMode(false);
                 }
             }
         }
@@ -239,16 +247,16 @@ public class LeanToggleHandler {
         int keyCode = event.getKey();
         int action = event.getAction();
 
-        if (keyCode == HOLD_LEAN_KEY.getKey().getValue()) {
+        if (keyCode == HOLD_TILT_KEY.getKey().getValue()) {
             if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_RELEASE) {
-                handleHoldLeanKey(action, player);
-                HOLD_LEAN_KEY.consumeClick();
+                handleHoldTiltKey(action, player);
+                HOLD_TILT_KEY.consumeClick();
             }
             return;
         }
 
-        if (BTPConfig.enableLongPressLean) return;
-        if (keyCode != TOGGLE_LEAN_KEY.getKey().getValue()) return;
+        if (BTPConfig.enableLongPressTilt) return;
+        if (keyCode != TOGGLE_TILT_KEY.getKey().getValue()) return;
         if (action != GLFW.GLFW_RELEASE) return;
         toggleMode(player);
     }
@@ -263,23 +271,23 @@ public class LeanToggleHandler {
         LocalPlayer player = mc.player;
         if (player == null) return;
 
-        if (button == HOLD_LEAN_KEY.getKey().getValue()) {
+        if (button == HOLD_TILT_KEY.getKey().getValue()) {
             if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_RELEASE) {
-                handleHoldLeanKey(action, player);
+                handleHoldTiltKey(action, player);
                 event.setCanceled(true);
-                HOLD_LEAN_KEY.consumeClick();
+                HOLD_TILT_KEY.consumeClick();
             }
             return;
         }
 
         if (button != GLFW.GLFW_MOUSE_BUTTON_RIGHT) return;
 
-        if (BTPConfig.enableLongPressLean) {
+        if (BTPConfig.enableLongPressTilt) {
             if (!isHoldingGun(player)) {
                 if (rightPressed) forceStopAllActions(player);
                 rightPressed = false;
-                cancelLeanTimer();
-                rightLongPressTriggered = false;
+                cancelTiltTimer();
+                rightLongPressTiltTriggered = false;
                 return;
             }
 
@@ -288,28 +296,25 @@ public class LeanToggleHandler {
             if (event.getAction() == GLFW.GLFW_PRESS) {
                 wasAimBeforePress = IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
                 rightPressed = true;
-                rightLongPressTriggered = false;
-                applyLeanMode(false);
+                rightLongPressTiltTriggered = false;
+                applyTiltMode(false);
 
-                cancelLeanTimer();
+                cancelTiltTimer();
 
                 int threshold = BTPConfig.longPressThreshold;
-                leanTimerTask = SCHEDULER.schedule(() -> {
+                tiltTimerTask = SCHEDULER.schedule(() -> {
                     Minecraft.getInstance().execute(() -> {
-                        if (leanTimerTask == null || leanTimerTask.isCancelled() || !rightPressed || rightLongPressTriggered) {
+                        if (tiltTimerTask == null || tiltTimerTask.isCancelled() || !rightPressed || rightLongPressTiltTriggered) {
                             return;
                         }
                         LocalPlayer currentPlayer = Minecraft.getInstance().player;
                         if (isHoldingGun(currentPlayer)) {
                             applyAimMode(false);
-                            applyLeanMode(true);
-                            rightLongPressTriggered = true;
+                            applyTiltMode(true);
+                            rightLongPressTiltTriggered = true;
 
-                            if (BTPConfig.showLongPressLeanMessages) {
-                                currentPlayer.displayClientMessage(
-                                        Component.translatable("message.btp.lean_on"),
-                                        true
-                                );
+                            if (BTPConfig.showLongPressTiltMessages) {
+                                BTPTipsHelper.sendTiltOnMessage(currentPlayer);
                             }
                         }
                     });
@@ -317,20 +322,15 @@ public class LeanToggleHandler {
 
             } else if (event.getAction() == GLFW.GLFW_RELEASE) {
                 rightPressed = false;
-                cancelLeanTimer();
+                cancelTiltTimer();
 
-                if (rightLongPressTriggered) {
-                    applyLeanMode(false);
-                    rightLongPressTriggered = false;
+                if (rightLongPressTiltTriggered) {
+                    applyTiltMode(false);
+                    rightLongPressTiltTriggered = false;
                 } else {
                     applyAimMode(!wasAimBeforePress);
-                    if (BTPConfig.showLongPressLeanMessages) {
-                        if (!wasAimBeforePress) {
-                            player.displayClientMessage(
-                                    Component.translatable("message.btp.aim_on"),
-                                    true
-                            );
-                        }
+                    if (BTPConfig.showLongPressTiltMessages && !wasAimBeforePress) {
+                        BTPTipsHelper.sendAimOnMessage(player);
                     }
                 }
 
@@ -370,7 +370,7 @@ public class LeanToggleHandler {
 
         event.setCanceled(true);
         rightPressed = event.getAction() == GLFW.GLFW_PRESS;
-        applyLeanMode(rightPressed);
+        applyTiltMode(rightPressed);
     }
 
     @SubscribeEvent
@@ -382,19 +382,19 @@ public class LeanToggleHandler {
         if (player == null) return;
 
         if (mc.screen != null) {
-            if (holdLeanActive || isLeaning || rightPressed) {
-                cancelLeanTimer();
+            if (holdTiltActive || isTilting || rightPressed) {
+                cancelTiltTimer();
                 rightPressed = false;
-                rightLongPressTriggered = false;
-                holdLeanActive = false;
-                applyLeanMode(false);
+                rightLongPressTiltTriggered = false;
+                holdTiltActive = false;
+                applyTiltMode(false);
                 suppressRightClick = false;
                 InputHelper.clearRightMouseButton();
                 mc.options.keyUse.setDown(false);
             }
         }
 
-        if (BTPConfig.enableLongPressLean) {
+        if (BTPConfig.enableLongPressTilt) {
             ItemStack currentMainHand = player.getMainHandItem();
             if (!ItemStack.matches(currentMainHand, lastMainHand)) {
                 if (BTPConfig.resetToAimOnItemSwitch) {
@@ -407,8 +407,8 @@ public class LeanToggleHandler {
                 lastMainHand = currentMainHand.copy();
             }
 
-            while (TOGGLE_LEAN_KEY.consumeClick()) {}
-            while (HOLD_LEAN_KEY.consumeClick()) {}
+            while (TOGGLE_TILT_KEY.consumeClick()) {}
+            while (HOLD_TILT_KEY.consumeClick()) {}
             return;
         }
 
@@ -424,7 +424,7 @@ public class LeanToggleHandler {
         if (!ItemStack.matches(currentMainHand, lastMainHand)) {
             if (BTPConfig.resetToAimOnItemSwitch) {
                 if (isRealItemSwitch(player, currentMainHand)) {
-                    applyLeanMode(false);
+                    applyTiltMode(false);
                     mode = 0;
                     if (rightPressed) {
                         if (isHoldingGun(player)) {
@@ -440,21 +440,21 @@ public class LeanToggleHandler {
             lastMainHand = currentMainHand.copy();
         }
 
-        while (TOGGLE_LEAN_KEY.consumeClick()) {}
-        while (HOLD_LEAN_KEY.consumeClick()) {}
+        while (TOGGLE_TILT_KEY.consumeClick()) {}
+        while (HOLD_TILT_KEY.consumeClick()) {}
 
         if (mc.screen == null) {
             if (rightPressed && !InputHelper.isPhysicalRightPressed()) {
-                if (isLeaning) {
-                    applyLeanMode(false);
+                if (isTilting) {
+                    applyTiltMode(false);
                 }
                 rightPressed = false;
-                rightLongPressTriggered = false;
-                cancelLeanTimer();
+                rightLongPressTiltTriggered = false;
+                cancelTiltTimer();
                 InputHelper.clearRightMouseButton();
                 mc.options.keyUse.setDown(false);
                 suppressRightClick = false;
-                TaczLabsCompatHelper.setCrosshairEnabled(true);
+                TaCZLabsCompat.setCrosshairEnabled(true);
             }
         }
     }

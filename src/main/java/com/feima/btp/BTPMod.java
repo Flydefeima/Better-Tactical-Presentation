@@ -1,9 +1,10 @@
 package com.feima.btp;
 
-import com.feima.btp.client.ClientModEvents;
+import com.feima.btp.client.BTPEventHandler;
 import com.feima.btp.config.BTPConfig;
+import com.feima.btp.network.NetworkHandler;
+import com.feima.btp.util.BTPTipsHelper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
@@ -24,15 +25,18 @@ public class BTPMod {
     public static boolean isTaczLabsLoaded = false;
     public static boolean isPlayerAnimatorLoaded = false;
 
-    public static final ResourceLocation BTP_LOOP_LAYER = new ResourceLocation(MOD_ID, "lean_upper_loop");
-    public static final ResourceLocation BTP_ONCE_LAYER = new ResourceLocation(MOD_ID, "lean_upper_once");
+    public static final ResourceLocation BTP_LOOP_LAYER = new ResourceLocation(MOD_ID, "tilt_upper_loop");
+    public static final ResourceLocation BTP_ONCE_LAYER = new ResourceLocation(MOD_ID, "tilt_upper_once");
 
     public BTPMod() {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientModEvents::onRegisterKeys)
+                FMLJavaModLoadingContext.get().getModEventBus().addListener(BTPEventHandler.ModBusEvents::onRegisterKeys)
         );
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onLoadComplete);
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, BTPConfig.SPEC, "btp-client.toml");
+
+        // ===== 新增：注册网络包（必须在 Mod 总线事件之前，但构造器中调用是安全的） =====
+        NetworkHandler.register();
     }
 
     private void onLoadComplete(FMLLoadCompleteEvent event) {
@@ -51,10 +55,7 @@ public class BTPMod {
                 Minecraft.getInstance().execute(() -> {
                     Player player = Minecraft.getInstance().player;
                     if (player != null) {
-                        player.displayClientMessage(
-                                Component.translatable("message.btp.independent_anim_load_failed"),
-                                false
-                        );
+                        BTPTipsHelper.sendAnimLoadFailedMessage(player);
                     }
                 });
             }

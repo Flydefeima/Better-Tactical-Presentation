@@ -1,6 +1,6 @@
 package com.feima.btp.mixin;
 
-import com.feima.btp.client.LeanToggleHandler;
+import com.feima.btp.client.TiltToggleHandler;
 import com.feima.btp.config.BTPConfig;
 import com.tacz.guns.api.modifier.CacheValue;
 import com.tacz.guns.resource.pojo.data.gun.InaccuracyType;
@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * Intercepts CacheValue.getValue() — the universal read point for all TACZ cached
- * properties. When BTP lean is active and the value is an inaccuracy map,
+ * properties. When BTP tilt is active and the value is an inaccuracy map,
  * returns a multiplied clone without mutating the original cache.
  */
 @Mixin(value = CacheValue.class, remap = false)
@@ -22,9 +22,9 @@ public class CacheValueMixin {
 
     @Inject(method = "getValue", at = @At("RETURN"), cancellable = true, remap = false)
     private void btp$modifySpreadOnRead(CallbackInfoReturnable<Object> cir) {
-        // Fast-path: skip entirely when multiplier is neutral or player isn't leaning
-        if (Math.abs(BTPConfig.leanSpreadMultiplier - 1.0) < 0.0001) return;
-        if (!LeanToggleHandler.isLeaning()) return;
+        // Fast-path: skip entirely when multiplier is neutral or player isn't tilting
+        if (Math.abs(BTPConfig.tiltSpreadMultiplier - 1.0) < 0.0001) return;
+        if (!TiltToggleHandler.isTilting()) return;
 
         Object value = cir.getReturnValue();
         if (!(value instanceof Map<?, ?> map) || map.isEmpty()) return;
@@ -36,7 +36,7 @@ public class CacheValueMixin {
         @SuppressWarnings("unchecked")
         Map<InaccuracyType, Float> source = (Map<InaccuracyType, Float>) map;
         Map<InaccuracyType, Float> scaled = new HashMap<>(source.size());
-        float multiplier = (float) BTPConfig.leanSpreadMultiplier;
+        float multiplier = (float) BTPConfig.tiltSpreadMultiplier;
         for (Map.Entry<InaccuracyType, Float> e : source.entrySet()) {
             scaled.put(e.getKey(), e.getValue() * multiplier);
         }
