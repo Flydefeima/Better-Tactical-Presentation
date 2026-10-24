@@ -6,11 +6,9 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import org.lwjgl.glfw.GLFW;
 
 @OnlyIn(Dist.CLIENT)
-public class InputHelper {
+public final class InputHelper {
 
-    public static void clearRightMouseButton() {
-        // 右键状态由 GLFW 物理键位直接读取，无需手动维护
-    }
+    private InputHelper() {}
 
     public static boolean isPhysicalRightPressed() {
         Minecraft mc = Minecraft.getInstance();

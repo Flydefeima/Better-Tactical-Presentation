@@ -4,6 +4,9 @@
 		"pistol_tilted": {
 			"loop": true,
 			"animation_length": 3.2,
+			"extraData": {
+				"name": "pistol_tilted"
+			},
 			"bones": {
 				"right_arm": {
 					"rotation": {
@@ -317,6 +320,9 @@
 		},
 		"pistol_tilted_fire": {
 			"animation_length": 0.35,
+			"extraData": {
+				"name": "pistol_tilted_fire"
+			},
 			"bones": {
 				"right_arm": {
 					"rotation": {

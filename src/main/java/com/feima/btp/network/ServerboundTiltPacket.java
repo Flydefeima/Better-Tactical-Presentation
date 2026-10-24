@@ -4,6 +4,7 @@ import com.feima.btp.BTPLog;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.function.Supplier;
 
@@ -30,10 +31,11 @@ public class ServerboundTiltPacket {
                 BTPLog.LOGGER.warn("Received tilt packet from null sender");
                 return;
             }
-            // 广播给所有追踪该玩家的客户端（包括发送者自己，但客户端会忽略自身）
+            // 只广播给追踪该玩家的其他客户端；发送者自身的 tilt 状态
+            // 由 TiltController 直接维护，无需回传。
             NetworkHandler.CHANNEL.send(
-                net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> sender),
-                new ClientboundTiltPacket(sender.getUUID(), msg.tilting)
+                    PacketDistributor.TRACKING_ENTITY.with(() -> sender),
+                    new ClientboundTiltPacket(sender.getUUID(), msg.tilting)
             );
         });
         context.setPacketHandled(true);

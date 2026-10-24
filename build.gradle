@@ -9,8 +9,8 @@ ext {
 }
 
 group = 'com.feima.btp'
-version = '1.6.1'
-archivesBaseName = 'BTPmod-forge-1.20.1'
+version = '2.0.0'
+archivesBaseName = 'BetterTacticalPresentation'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
@@ -52,6 +52,7 @@ minecraft {
 mixin {
     add sourceSets.main, 'btp.refmap.json'
     config 'btp.mixins.json'
+    config 'btp.playeranimator.mixins.json'
 }
 
 repositories {
@@ -61,13 +62,39 @@ repositories {
         name = "KosmX's maven"
         url = 'https://maven.kosmx.dev/'
     }
+    // ===== 新增：Modrinth Maven（用于 Cloth Config 等可选客户端依赖） =====
+    // exclusiveContent 保证只有 maven.modrinth 组的依赖走这个仓库，
+    // 避免污染其它依赖的解析路径。
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Modrinth"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
+        // ForgeGradle 需要保留这一行，让 fg.repository 也能访问该 group
+        forRepositories(fg.repository)
+        filter {
+            includeGroup "maven.modrinth"
+        }
+    }
 }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     implementation fg.deobf('tacz:tacz:1.1.8-hotfix')
-    implementation fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:1.0.2-rc1+1.20")
-    
+
+    compileOnly fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:1.0.2-rc1+1.20")
+    runtimeOnly fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:1.0.2-rc1+1.20")
+
+    // ===== 新增：Cloth Config（可选客户端依赖，用于图形化配置界面） =====
+    // 与 playeranimator 采用相同的"编译期可见 + 本地开发可运行"模式：
+    //   compileOnly —— 编译 BTPClothConfigScreen / BTPClothConfigRegistry 时可见
+    //   runtimeOnly —— 本地开发环境能真正加载，以便测试配置界面
+    // 发布后是否必需由 mods.toml 的 mandatory=false 决定，与这里无关。
+    compileOnly fg.deobf("maven.modrinth:9s6osm5g:t8TXrZvZ")
+    runtimeOnly fg.deobf("maven.modrinth:9s6osm5g:t8TXrZvZ")
+
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
@@ -85,7 +112,7 @@ jar {
                 "Implementation-Version"  : project.version,
                 "Implementation-Vendor"   : "Feima",
                 "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                "MixinConfigs"            : "btp.mixins.json",
+                "MixinConfigs"            : "btp.mixins.json,btp.playeranimator.mixins.json",
                 "License"                 : "GNU GPL 3.0"
         ])
     }

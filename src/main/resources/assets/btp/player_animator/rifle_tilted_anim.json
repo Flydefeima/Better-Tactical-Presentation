@@ -5,7 +5,7 @@
 			"loop": true,
 			"animation_length": 3.2,
 			"extraData": {
-				"name": "tilted_gun"
+				"name": "rifle_tilted_gun"
 			},
 			"bones": {
 				"right_arm": {
@@ -325,7 +325,7 @@
 		"rifle_tilted_gun_fire": {
 			"animation_length": 0.35,
 			"extraData": {
-				"name": "tilted_gun_fire"
+				"name": "rifle_tilted_gun_fire"
 			},
 			"bones": {
 				"right_arm": {

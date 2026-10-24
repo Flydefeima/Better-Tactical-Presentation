@@ -1,26 +1,37 @@
 package com.feima.btp.mixin;
 
 import com.feima.btp.BTPMod;
-import com.feima.btp.client.TiltToggleHandler;
+import com.feima.btp.client.animation.BTPAnimator;
+import com.feima.btp.client.tilt.TiltController;
 import com.feima.btp.config.BTPConfig;
-import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.compat.playeranimator.animation.AnimationManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.Pose;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * 据枪 + 开火时屏蔽 TaCZ 的上半身 loop 动画。
+ *
+ * <p>TaCZ 的 {@code playLoopUpperAnimation} 会每 tick 往 {@code loop_upper} 层
+ * 塞持枪/移动/瞄准姿态，与 BTP 的倾斜动画在同一层（不同 layer，但骨骼覆盖
+ * 权重在开火瞬间会冲突），导致开火时视觉抽搐。
+ *
+ * <p>仅在以下三个条件同时成立时 cancel：
+ * <ul>
+ *   <li>玩家处于战术据枪状态（{@link TiltController#isTilting()}）</li>
+ *   <li>BTP 的倾斜动画已经进入 TILTING 状态</li>
+ *   <li>BTP 的开火反馈动画正在播放</li>
+ * </ul>
+ *
+ * <p>不拦截 once 层——BTP 的倾斜 fire 动画与 TaCZ 的 once fire 动画分层共存，
+ * 由优先级决定最终输出，无需干预。
+ */
 @Mixin(value = AnimationManager.class, remap = false)
 public class LoopUpperMixin {
-
-    private static final int TRANSITION_FRAMES_COUNT = 8;
-    private static boolean lastFrameProne = false;
-    private static int transitionFrames = 0;
 
     @Inject(
             method = "playLoopUpperAnimation",
@@ -28,46 +39,17 @@ public class LoopUpperMixin {
             cancellable = true,
             remap = false
     )
-    private static void btp$interceptLoopUpperAnimation(AbstractClientPlayer player, GunDisplayInstance display, float limbSwingAmount, CallbackInfo ci) {
+    private static void btp$interceptLoopOnTiltFire(AbstractClientPlayer player,
+                                                     GunDisplayInstance display,
+                                                     float limbSwingAmount,
+                                                     CallbackInfo ci) {
         if (!BTPMod.isPlayerAnimatorLoaded) return;
-        if (player != Minecraft.getInstance().player) return;
         if (!BTPConfig.enableThirdPersonTiltAnimation) return;
+        if (player != Minecraft.getInstance().player) return;
 
-        // ===== 如果按住据枪键并开镜，则不拦截（让 TaCZ 开镜动画播放） =====
-        if (TiltToggleHandler.isHoldingTiltAndAiming()) {
-            return;
-        }
-
-        LocalPlayer localPlayer = (LocalPlayer) player;
-        IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(localPlayer);
-
-        // ===== 修改：使用 Pose.SWIMMING 检测趴下 =====
-        boolean isProne = localPlayer.getPose() == Pose.SWIMMING && !localPlayer.isSwimming();
-
-        // 检测趴下→站立切换
-        if (lastFrameProne && !isProne) {
-            transitionFrames = TRANSITION_FRAMES_COUNT;
-        }
-        lastFrameProne = isProne;
-
-        // 过渡窗口内不拦截
-        if (transitionFrames > 0) {
-            transitionFrames--;
-            return;
-        }
-
-        // 趴下时完全不拦截
-        if (isProne) {
-            return;
-        }
-
-        // 疾跑时不拦截（breakSprint = false 时）
-        if (!BTPConfig.breakSprint && localPlayer.isSprinting()) {
-            return;
-        }
-
-        // 站立据枪时 BTP 接管
-        if (TiltToggleHandler.isTilting()) {
+        if (TiltController.isTilting()
+                && BTPAnimator.isTiltAnimationActive()
+                && BTPAnimator.isFireAnimationActive()) {
             ci.cancel();
         }
     }

@@ -2,10 +2,11 @@ package com.feima.btp.client;
 
 import com.feima.btp.BTPLog;
 import com.feima.btp.BTPMod;
+import com.feima.btp.client.animation.AnimationRegistry;
 import com.feima.btp.client.animation.BTPAnimator;
+import com.feima.btp.client.animation.TiltAnimNames;
 import com.feima.btp.client.compat.TaCZLabsCompat;
 import com.feima.btp.util.BTPTipsHelper;
-import com.tacz.guns.compat.playeranimator.animation.PlayerAnimatorAssetManager;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -18,16 +19,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * BTP 模组客户端统一事件处理器。
- * 负责：按键注册、玩家生命周期、启动健康检查、延迟任务等。
- */
 @Mod.EventBusSubscriber(modid = BTPMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class BTPEventHandler {
 
-    // ============================================================
-    // 按键定义（原 ClientModEvents 内容）
-    // ============================================================
     public static final KeyMapping TOGGLE_TILT_KEY = new KeyMapping(
             "key.btp.toggle_tilt",
             GLFW.GLFW_KEY_B,
@@ -40,9 +34,6 @@ public final class BTPEventHandler {
             "key.categories.btp"
     );
 
-    // ============================================================
-    // MOD 总线事件（按键注册）
-    // ============================================================
     @Mod.EventBusSubscriber(modid = BTPMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ModBusEvents {
         @SubscribeEvent
@@ -51,10 +42,6 @@ public final class BTPEventHandler {
             event.register(HOLD_TILT_KEY);
         }
     }
-
-    // ============================================================
-    // FORGE 总线事件（生命周期、Tick、健康检查）
-    // ============================================================
 
     private static boolean hasChecked = false;
     private static int loginDelayTicks = 0;
@@ -91,7 +78,14 @@ public final class BTPEventHandler {
     @SubscribeEvent
     public static void onPlayerLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         BTPTipsHelper.clearPendingErrors();
-        TiltStateManager.clear(); // ===== 新增：清空远程玩家倾斜状态缓存 =====
+        TiltStateManager.clear();
+        // FIX: BTPAnimator 的字段/方法签名引用 dev.kosmx.playerAnim.* 类。
+        // 未装 PlayerAnimator 时 JVM 解析 BTPAnimator 会抛 NoClassDefFoundError。
+        // 与 BTPMod.onLoadComplete / performStartupChecks 的契约保持一致：
+        // 只有在 PlayerAnimator 加载时才允许触碰 BTPAnimator。
+        if (BTPMod.isPlayerAnimatorLoaded) {
+            BTPAnimator.resetState();
+        }
         hasChecked = false;
         loginDelayTicks = 0;
     }
@@ -101,11 +95,14 @@ public final class BTPEventHandler {
 
         if (BTPMod.isPlayerAnimatorLoaded) {
             try {
-                PlayerAnimatorAssetManager manager = PlayerAnimatorAssetManager.get();
-                boolean rifleMissing = !manager.containsKey(BTPAnimator.RIFLE_TILT_ANIMATION_ID);
-                boolean pistolMissing = !manager.containsKey(BTPAnimator.PISTOL_TILT_ANIMATION_ID);
+                // AnimationRegistry.player 内部已做 containsKey 检查，
+                // 直接调用即可——file 缺失和 name 缺失会各自打 warn 日志。
+                boolean rifleMissing = AnimationRegistry.player(
+                        TiltAnimNames.RIFLE_FILE, TiltAnimNames.RIFLE_LOOP) == null;
+                boolean pistolMissing = AnimationRegistry.player(
+                        TiltAnimNames.PISTOL_FILE, TiltAnimNames.PISTOL_LOOP) == null;
                 if (rifleMissing || pistolMissing) {
-                    BTPTipsHelper.sendMissingTiltAnimationMessage(player);
+                    BTPTipsHelper.sendMissingTiltAnimationMessage();
                 }
             } catch (Exception e) {
                 BTPLog.LOGGER.warn("Failed to check tilt animations during startup", e);
@@ -115,7 +112,6 @@ public final class BTPEventHandler {
         if (BTPMod.isTaczLabsLoaded) {
             try {
                 TaCZLabsCompat.reset();
-                TaCZLabsCompat.setCrosshairEnabled(!TiltToggleHandler.isTilting());
             } catch (Exception e) {
                 BTPLog.LOGGER.warn("Failed to check TaczLabs compatibility during startup", e);
             }

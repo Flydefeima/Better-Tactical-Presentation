@@ -1,10 +1,12 @@
 package com.feima.btp.client.animation;
 
+import com.feima.btp.client.TiltStateManager;
 import dev.kosmx.playerAnim.api.TransformType;
 import dev.kosmx.playerAnim.api.layered.modifier.AdjustmentModifier;
 import dev.kosmx.playerAnim.core.util.Vec3f;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Pose;
 import org.jetbrains.annotations.NotNull;
@@ -14,18 +16,78 @@ import java.util.Optional;
 public class TiltAdjust extends AdjustmentModifier {
     private static final float GIMBAL_EPSILON = 1.0e-5f;
 
-    // 模式标志：true=复杂修正（据枪），false=简单修正（占位/普通）
+    // ===== 本地玩家的全局状态：只有本地玩家使用 =====
+    private static boolean applying = false;
     private static boolean useComplexCorrection = false;
 
-    public static void setUseComplexCorrection(boolean use) {
-        useComplexCorrection = use;
+    private static float weight = 0.0f;
+    private static float weightStart = 0.0f;
+    private static float weightTarget = 0.0f;
+    private static long fadeStartMs = 0L;
+    private static long fadeDurationMs = 1L;
+    private static boolean fading = false;
+
+    public static void setApplying(boolean v) {
+        applying = v;
+        if (!v) {
+            fading = false;
+            weight = 0.0f;
+            weightStart = 0.0f;
+            weightTarget = 0.0f;
+        }
     }
 
+    public static boolean isApplying() {
+        return applying;
+    }
+
+    public static void setUseComplexCorrection(boolean v) {
+        useComplexCorrection = v;
+    }
+
+    public static void startFadeIn(long durationMs) {
+        weightStart = weight;
+        weightTarget = 1.0f;
+        fadeStartMs = System.currentTimeMillis();
+        float delta = Math.abs(weightTarget - weightStart);
+        fadeDurationMs = Math.max(1L, (long) (durationMs * delta));
+        fading = true;
+    }
+
+    public static void startFadeOut(long durationMs) {
+        weightStart = weight;
+        weightTarget = 0.0f;
+        fadeStartMs = System.currentTimeMillis();
+        float delta = Math.abs(weightTarget - weightStart);
+        fadeDurationMs = Math.max(1L, (long) (durationMs * delta));
+        fading = true;
+    }
+
+    private static float currentWeight() {
+        if (fading) {
+            long elapsed = System.currentTimeMillis() - fadeStartMs;
+            if (elapsed >= fadeDurationMs) {
+                weight = weightTarget;
+                fading = false;
+            } else {
+                float t = (float) elapsed / fadeDurationMs;
+                weight = weightStart + (weightTarget - weightStart) * t;
+            }
+        }
+        return weight;
+    }
+
+    // ===== 实例状态 =====
+
     private final AbstractClientPlayer player;
+    private final boolean isLocal;
 
     private TiltAdjust(AbstractClientPlayer player) {
         super(partName -> Optional.empty());
         this.player = player;
+        // 用 instanceof 而非 Minecraft.getInstance().player：
+        // registerFactory 在玩家实例创建时调用，此刻 mc.player 可能尚未赋值
+        this.isLocal = player instanceof LocalPlayer;
     }
 
     public static AdjustmentModifier getModifier(AbstractClientPlayer player) {
@@ -38,35 +100,44 @@ public class TiltAdjust extends AdjustmentModifier {
                                          float tickDelta,
                                          @NotNull Vec3f value0) {
         Vec3f animated = super.get3DTransform(partName, type, tickDelta, value0);
+
         if (type != TransformType.ROTATION || !isActive() || shouldPauseViewAdjustment()) {
             return animated;
         }
 
-        float fade = 1.0f;
+        float w;
+        if (isLocal) {
+            // 本地玩家：沿用原有的 fade 状态机
+            if (!applying) return animated;
+            w = currentWeight();
+        } else {
+            // 远程玩家：无 fade 状态，直接用同步状态驱动，权重恒为 1
+            if (!TiltStateManager.isTilting(player)) return animated;
+            w = 1.0f;
+        }
+
+        if (w <= 0.0f) return animated;
+
         float partialTick = Minecraft.getInstance().getPartialTick();
         float pitch = Mth.wrapDegrees(Mth.lerp(partialTick, player.xRotO, player.getXRot()));
-        float pitchRadians = pitch * Mth.DEG_TO_RAD * fade;
+        float pitchRadians = pitch * Mth.DEG_TO_RAD * w;
 
-        // ---- 手臂修正 ----
         if ("rightArm".equals(partName)) {
-            // 右手：始终使用复杂矩阵分解（无论据枪或占位）
             return composeParentPitch(animated, pitchRadians);
         }
 
         if ("leftArm".equals(partName)) {
-            if (useComplexCorrection) {
-                // 据枪模式 → 复杂
+            // 远程玩家没有「据枪/普通」区分——只有同步过来才知道是不是倾斜
+            // 统一用复杂修正更稳（姿态与本地一致）
+            if (useComplexCorrection || !isLocal) {
                 return composeParentPitch(animated, pitchRadians);
-            } else {
-                // 占位/普通模式 → 简单附加 pitch
-                return animated.add(new Vec3f(pitchRadians, 0, 0));
             }
+            return animated.add(new Vec3f(pitchRadians, 0, 0));
         }
 
-        // ---- 头部：始终简单附加（额外处理爬行 yaw） ----
         if ("head".equals(partName)) {
             if (isVisuallyCrawling()) {
-                return applyCrawlingHeadYaw(animated, partialTick, fade);
+                return applyCrawlingHeadYaw(animated, partialTick, w);
             }
             return animated.add(new Vec3f(pitchRadians, 0, 0));
         }
@@ -83,16 +154,13 @@ public class TiltAdjust extends AdjustmentModifier {
         return !player.isSwimming() && player.getPose() == Pose.SWIMMING;
     }
 
-    private Vec3f applyCrawlingHeadYaw(Vec3f animated, float partialTick, float fade) {
+    private Vec3f applyCrawlingHeadYaw(Vec3f animated, float partialTick, float w) {
         float bodyYaw = Mth.rotLerp(partialTick, player.yBodyRotO, player.yBodyRot);
         float headYaw = Mth.rotLerp(partialTick, player.yHeadRotO, player.yHeadRot);
         float relativeYaw = Mth.clamp(Mth.wrapDegrees(headYaw - bodyYaw), -85.0f, 85.0f);
-        return animated.add(new Vec3f(0.0f, 0.0f, -relativeYaw * Mth.DEG_TO_RAD * fade));
+        return animated.add(new Vec3f(0.0f, 0.0f, -relativeYaw * Mth.DEG_TO_RAD * w));
     }
 
-    /**
-     * 复杂矩阵分解：Rx(pitch) * Rz(roll) * Ry(yaw) * Rx(armPitch) → Z-Y-X Euler
-     */
     static Vec3f composeParentPitch(Vec3f rotation, float pitch) {
         float armPitch = rotation.getX();
         float yaw = rotation.getY();

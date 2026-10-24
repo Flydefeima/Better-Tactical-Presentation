@@ -1,28 +1,24 @@
 package com.feima.btp.client;
 
+import com.feima.btp.client.tilt.TiltController;
 import com.feima.btp.config.BTPConfig;
+import com.feima.btp.network.TiltStateStorage;
 import com.tacz.guns.api.item.IGun;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
-public class TiltStateManager {
-    private static final Map<UUID, Boolean> REMOTE_TILT_STATES = new ConcurrentHashMap<>();
-
-    public static void setTiltState(UUID playerId, boolean tilting) {
-        if (Minecraft.getInstance().player != null &&
-            Minecraft.getInstance().player.getUUID().equals(playerId)) {
-            return;
-        }
-        REMOTE_TILT_STATES.put(playerId, tilting);
-    }
+/**
+ * 客户端专用的倾斜状态查询。
+ *
+ * <p>数据存储已迁移到 {@link TiltStateStorage}（network 包，两端通用），
+ * 本类只负责「结合本地输入状态 / 蹲下状态 / 持枪状态」得出最终判定。
+ */
+public final class TiltStateManager {
+    private TiltStateManager() {}
 
     /**
      * 统一查询接口：
-     * - 本地玩家：主动据枪状态（来自 TiltToggleHandler） 或 （蹲下 && 配置允许 && 持枪）
+     * - 本地玩家：主动据枪状态（来自 {@link TiltController}） 或 （蹲下 && 配置允许 && 持枪）
      * - 远程玩家：缓存的主动据枪状态 或 （蹲下 && 配置允许 && 持枪）
      */
     public static boolean isTilting(Player player) {
@@ -30,12 +26,11 @@ public class TiltStateManager {
 
         boolean activeTilt;
         if (player == Minecraft.getInstance().player) {
-            activeTilt = TiltToggleHandler.isTilting();
+            activeTilt = TiltController.isTilting();
         } else {
-            activeTilt = REMOTE_TILT_STATES.getOrDefault(player.getUUID(), false);
+            activeTilt = TiltStateStorage.getTiltState(player.getUUID());
         }
 
-        // 蹲下自动据枪（仅当配置允许且持枪时）
         boolean crouchTilt = false;
         if (!BTPConfig.disableVanillaCrouchTilt) {
             crouchTilt = player.isCrouching() && IGun.mainHandHoldGun(player);
@@ -45,6 +40,6 @@ public class TiltStateManager {
     }
 
     public static void clear() {
-        REMOTE_TILT_STATES.clear();
+        TiltStateStorage.clear();
     }
 }

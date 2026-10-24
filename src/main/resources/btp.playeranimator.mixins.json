@@ -1,0 +1,15 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.feima.btp.mixin.compat",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "btp.refmap.json",
+  "mixins": [],
+  "client": [
+    "PlayerAnimatorAssetAccessorMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

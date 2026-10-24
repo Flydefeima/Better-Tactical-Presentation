@@ -4,14 +4,15 @@
   "package": "com.feima.btp.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "btp.refmap.json",
-  "mixins": [
+  "mixins": [],
+  "client": [
     "CacheValueMixin",
     "GunStateMixin",
     "SprintBlockMixin",
     "CrosshairMixin",
-    "LoopUpperMixin"
+    "LoopUpperMixin",
+    "ZoomKeyMixin"
   ],
-  "client": [],
   "server": [],
   "injectors": {
     "defaultRequire": 1

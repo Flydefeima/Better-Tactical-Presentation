@@ -1,7 +1,7 @@
 package com.feima.btp.mixin;
 
-import com.feima.btp.client.TiltToggleHandler;
-import com.feima.btp.config.BTPConfig;
+import com.feima.btp.client.CrosshairResolver;
+import com.feima.btp.client.tilt.TiltController;
 import com.tacz.guns.client.event.RenderCrosshairEvent;
 import com.tacz.guns.client.renderer.crosshair.CrosshairType;
 import net.minecraft.resources.ResourceLocation;
@@ -21,11 +21,11 @@ public class CrosshairMixin {
             remap = false
     )
     private static ResourceLocation redirectCrosshairLocation(CrosshairType originalType) {
-        if (!TiltToggleHandler.isTilting()) {
+        if (!TiltController.isTilting()) {
             return CrosshairType.getTextureLocation(originalType);
         }
 
-        CrosshairType overrideType = BTPConfig.getTacticalCrosshairType();
+        CrosshairType overrideType = CrosshairResolver.getTacticalCrosshairType();
         if (overrideType != null) {
             return CrosshairType.getTextureLocation(overrideType);
         }

@@ -12,20 +12,21 @@ authors="Feima"
 description='''
 Adds a toggle key for the tilt gun mechanic in TACZ.
 '''
+displayTest="IGNORE_ALL_VERSION"
 
 [[dependencies.btp]]
 modId="tacz"
 mandatory=true
 versionRange="[1.1.5,)"
 ordering="NONE"
-side="CLIENT"
+side="BOTH"
 
 [[dependencies.btp]]
 modId="forge"
 mandatory=true
 versionRange="[47,)"
 ordering="NONE"
-side="CLIENT"
+side="BOTH"
 
 [[dependencies.btp]]
 modId="taczlabs"
@@ -39,6 +40,13 @@ modId="playeranimator"
 mandatory=false
 versionRange="[1.0.0,)"
 ordering="NONE"
+side="CLIENT"
+
+[[dependencies.btp]]
+modId="cloth_config"
+mandatory=false
+versionRange="[11.0.0,)"
+ordering="AFTER"
 side="CLIENT"
 
 [modproperties.btp]

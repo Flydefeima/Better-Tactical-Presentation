@@ -1,6 +1,5 @@
 package com.feima.btp.network;
 
-import com.feima.btp.client.TiltStateManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -27,10 +26,10 @@ public class ClientboundTiltPacket {
 
     public static void handle(ClientboundTiltPacket msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> {
-            // 更新远程玩家的倾斜状态
-            TiltStateManager.setTiltState(msg.playerId, msg.tilting);
-        });
+        context.enqueueWork(() ->
+                // 使用 TiltStateStorage 而非 TiltStateManager：
+                // 后者引用 Minecraft / TiltToggleHandler，服务端加载会崩
+                TiltStateStorage.setTiltState(msg.playerId, msg.tilting));
         context.setPacketHandled(true);
     }
 }

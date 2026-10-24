@@ -1,23 +1,15 @@
 package com.feima.btp;
 
-import com.feima.btp.client.BTPEventHandler;
 import com.feima.btp.config.BTPConfig;
 import com.feima.btp.network.NetworkHandler;
-import com.feima.btp.util.BTPTipsHelper;
-import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-
-import java.lang.reflect.Method;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 
 @Mod(BTPMod.MOD_ID)
 public class BTPMod {
@@ -29,13 +21,21 @@ public class BTPMod {
     public static final ResourceLocation BTP_ONCE_LAYER = new ResourceLocation(MOD_ID, "tilt_upper_once");
 
     public BTPMod() {
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                FMLJavaModLoadingContext.get().getModEventBus().addListener(BTPEventHandler.ModBusEvents::onRegisterKeys)
-        );
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onLoadComplete);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, BTPConfig.SPEC, "btp-client.toml");
 
-        // ===== 新增：注册网络包（必须在 Mod 总线事件之前，但构造器中调用是安全的） =====
+        if (FMLEnvironment.dist.isClient()) {
+            ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, BTPConfig.SPEC, "btp-client.toml");
+
+            // 与 TaCZ 一致：构造期用 ModLoadingContext.get().registerExtensionPoint 注册。
+            // 未装 Cloth Config 也安全——lambda 体里通过 isLoaded 决定是否引用
+            // BTPMenuIntegration.getConfigScreen（首次执行 lambda 时才触发 Cloth Config 类加载）。
+            try {
+                com.feima.btp.client.compat.cloth.BTPMenuIntegration.registerModsPage();
+            } catch (Throwable e) {
+                BTPLog.LOGGER.warn("Failed to register config screen factory: {}", e.getMessage());
+            }
+        }
+
         NetworkHandler.register();
     }
 
@@ -43,21 +43,12 @@ public class BTPMod {
         isTaczLabsLoaded = ModList.get().isLoaded("taczlabs");
         isPlayerAnimatorLoaded = ModList.get().isLoaded("playeranimator");
 
-        if (isPlayerAnimatorLoaded) {
+        if (FMLEnvironment.dist.isClient() && isPlayerAnimatorLoaded) {
             try {
-                Class<?> animatorClass = Class.forName("com.feima.btp.client.animation.BTPAnimator");
-                Method registerMethod = animatorClass.getDeclaredMethod("registerAnimationLayers");
-                registerMethod.invoke(null);
-                MinecraftForge.EVENT_BUS.register(animatorClass);
+                com.feima.btp.client.compat.BTPPlayerAnimatorEntry.register();
             } catch (Throwable e) {
                 BTPLog.LOGGER.warn("Failed to register playeranimator features: {}", e.getMessage());
                 e.printStackTrace();
-                Minecraft.getInstance().execute(() -> {
-                    Player player = Minecraft.getInstance().player;
-                    if (player != null) {
-                        BTPTipsHelper.sendAnimLoadFailedMessage(player);
-                    }
-                });
             }
         }
     }
