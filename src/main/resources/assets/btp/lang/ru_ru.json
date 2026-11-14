@@ -18,6 +18,8 @@
 
   "config.btp.disableVanillaCrouchTilt": "Отключить наклон при приседании (ванильный)",
   "config.btp.disableVanillaCrouchTilt.desc": "Отключает ванильный наклон TaCZ при приседании.",
+  "config.btp.forceTiltOnAllGuns": "Принудительный наклон для всех оружий",
+  "config.btp.forceTiltOnAllGuns.desc": "Игнорировать флаг can_slide оружия и всегда наклонять оружие при тактическом наклоне. (В TaCZ 1.2.0 у снайперских винтовок can_slide=false.)",
   "config.btp.breakSprint": "Прерывать спринт",
   "config.btp.breakSprint.desc": "Принудительно отключает спринт во время наклона.",
   "config.btp.tiltSpreadMultiplier": "Множитель разброса при наклоне",
@@ -40,7 +42,9 @@
   "config.btp.tiltTriggerMode.DEFAULT": "По умолчанию (клавиша B)",
   "config.btp.tiltTriggerMode.LONG_PRESS": "Долгое удержание ПКМ",
   "config.btp.tiltTriggerMode.ZOOM_STAGE": "Виртуальная ступень зума",
-  "config.btp.tiltTriggerMode.NONE": "Отключено (только клавиша удержания)",
+  "config.btp.tiltTriggerMode.NONE": "Отключено",
+  "config.btp.enableHoldTilt": "Включить клавишу тактического наклона",
+  "config.btp.enableHoldTilt.desc": "Удерживайте HOLD_TILT_KEY для тактического наклона. Отключение полностью выключает клавишу.",
   "config.btp.interruptOnToggle": "Прерывать при переключении",
   "config.btp.interruptOnToggle.desc": "(По умолчанию) Мгновенно прерывает текущее действие при переключении.",
   "config.btp.showLongPressTiltMessages": "Показывать сообщения о тактическом наклоне",
@@ -49,5 +53,6 @@
   "config.btp.longPressThreshold.desc": "(Долгое удержание) Порог удержания ПКМ в миллисекундах.",
 
   "config.btp.missing_cloth_config.title": "Требуется Cloth Config",
-  "config.btp.missing_cloth_config.message": "Для изменения настроек BTP в игре необходимо установить Cloth Config."
+  "config.btp.missing_cloth_config.message": "Для изменения настроек BTP в игре необходимо установить Cloth Config.",
+  "message.btp.tacz_version_mismatch": "BTP собрана для TaCZ 1.2.0. Текущая версия TaCZ может быть несовместима. Функции, связанные с клавишей V (переключение увеличения без прицеливания, режим ZOOM_STAGE), могут не работать."
 }

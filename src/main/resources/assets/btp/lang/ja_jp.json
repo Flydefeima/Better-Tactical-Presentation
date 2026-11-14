@@ -18,6 +18,8 @@
 
   "config.btp.disableVanillaCrouchTilt": "バニラしゃがみリーンを無効化",
   "config.btp.disableVanillaCrouchTilt.desc": "TaCZ バニラしゃがみリーンを無効化します。",
+  "config.btp.forceTiltOnAllGuns": "すべての銃でリーンを強制",
+  "config.btp.forceTiltOnAllGuns.desc": "銃の can_slide フラグを無視し、BTP リーン時に常に傾けます。（TaCZ 1.2.0 のスナイパーライフルは can_slide=false に設定されています。）",
   "config.btp.breakSprint": "スプリントを中断",
   "config.btp.breakSprint.desc": "リーン中はスプリントを強制無効化します。",
   "config.btp.tiltSpreadMultiplier": "リーン時拡散倍率",
@@ -40,7 +42,9 @@
   "config.btp.tiltTriggerMode.DEFAULT": "デフォルト（Bキー切り替え）",
   "config.btp.tiltTriggerMode.LONG_PRESS": "右クリック長押し",
   "config.btp.tiltTriggerMode.ZOOM_STAGE": "仮想ズーム段階",
-  "config.btp.tiltTriggerMode.NONE": "無効（長押しキーのみ）",
+  "config.btp.tiltTriggerMode.NONE": "無効",
+  "config.btp.enableHoldTilt": "長押しリーンキーを有効化",
+  "config.btp.enableHoldTilt.desc": "有効にすると HOLD_TILT_KEY の長押しでリーンします。無効にするとこのキーは動作しません。",
   "config.btp.interruptOnToggle": "切り替え時に割り込む",
   "config.btp.interruptOnToggle.desc": "（デフォルト）切り替え時に現在の動作を即座に停止します。",
   "config.btp.showLongPressTiltMessages": "右クリック長押しリーンメッセージを表示",
@@ -49,5 +53,6 @@
   "config.btp.longPressThreshold.desc": "（長押し）右クリック長押しの判定時間（ミリ秒）。",
 
   "config.btp.missing_cloth_config.title": "Cloth Config が必要です",
-  "config.btp.missing_cloth_config.message": "ゲーム内で BTP の設定を変更するには Cloth Config のインストールが必要です。"
+  "config.btp.missing_cloth_config.message": "ゲーム内で BTP の設定を変更するには Cloth Config のインストールが必要です。",
+  "message.btp.tacz_version_mismatch": "BTP は TaCZ 1.2.0 向けにビルドされています。現在の TaCZ バージョンは互換性がない可能性があります。V キー関連の機能（非エイム時のズーム切り替え、ZOOM_STAGE モード）が動作しない場合があります。"
 }

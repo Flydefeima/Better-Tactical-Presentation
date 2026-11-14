@@ -13,6 +13,27 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
 
+/**
+ * BTP 上半身据枪姿态修正。
+ *
+ * <p><b>静态字段契约</b>：{@code applying / useComplexCorrection / weight / ...}
+ * 全部为 {@code static}，**只有本地玩家实例**会读写。远程玩家实例走
+ * {@code !isLocal} 分支，只读 {@link TiltStateManager}，不碰静态 fade 状态。
+ * 这一假定在未来支持分屏或多本地玩家前不会变化。
+ *
+ * <p><b>与 TaCZ 的 rotation 层叠加（结论：不会翻倍，已实测确认）</b>：
+ * TaCZ 的 {@code AdjustmentYRotModifier} 挂在 ROTATION_ANIMATION 层（priority 96），
+ * 与 BTP 层（priority 110）是各自独立的 ModifierLayer，不会对同一骨骼重复施加
+ * 同一份 pitch。已实际验证：据枪抬头 30° 时第三人称头/手臂姿态与预期一致，
+ * 不会比 TaCZ 单独 aim 时更夸张。
+ *
+ * <p>{@link #composeParentPitch} 做的是完整 roll 复合（矩阵乘法），
+ * 而非简单相加，能正确处理 BTP 自身接收到的骨骼旋转。不要"检测到 rotation
+ * 层就跳过"——那会丢失 roll 复合，导致第三人称手臂朝向错误。
+ *
+ * <p><b>不要在任何 review / 重构中重新提出"pitch 是否翻倍"的疑问</b>：
+ * 该问题已在多次开发讨论中排查并实测确认，答案是<b>不会</b>。此注释即为最终结论。
+ */
 public class TiltAdjust extends AdjustmentModifier {
     private static final float GIMBAL_EPSILON = 1.0e-5f;
 

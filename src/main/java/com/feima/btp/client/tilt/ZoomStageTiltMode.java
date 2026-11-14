@@ -50,7 +50,19 @@ import static com.feima.btp.client.BTPEventHandler.TOGGLE_TILT_KEY;
  * 这是 ZOOM_STAGE 模式的核心语义——"据枪"就是倍率循环的最后一档，
  * 与玩家是否开镜无关。
  *
- * <p>Hold 键由 {@link TiltController} 独立处理，本类不参与。
+ * <p><b>Hold 键交互</b>：Hold 键按下会进入据枪（走 {@link TiltController#enterTilt}
+ * 的通用逻辑，与模式无关）。释放时 {@link #onHoldKeyReleased} 根据
+ * {@link #zoomStageSelected} 分派：
+ * <ul>
+ *   <li>在据枪档（{@code zoomStageSelected == true}）→ 恢复据枪姿态
+ *       （右键仍按住时重新进入据枪）</li>
+ *   <li>不在据枪档（{@code zoomStageSelected == false}）→ 恢复瞄准
+ *       （与 {@code DefaultTiltMode} 的 {@code mode == 0} 分支一致）</li>
+ * </ul>
+ * 后一种分支的意图：玩家在普通倍率下按着右键瞄准，中途按 hold 进入据枪
+ * （{@code enterTilt} 会 {@code aim(false)} 打断瞄准），松开 hold 后
+ * 如果右键仍按住，应该像普通瞄准一样重新开镜，而不是停留在退出据枪后的
+ * 空状态。否则玩家会感觉"按住右键瞄着，按一下 hold 就再也打不开镜子了"。
  */
 public final class ZoomStageTiltMode implements TiltMode {
 
@@ -139,13 +151,40 @@ public final class ZoomStageTiltMode implements TiltMode {
         zoomStageSelected = false;
     }
 
+    /**
+     * Hold 键释放后的恢复逻辑。
+     *
+     * <p>进入这个方法的上下文：{@link TiltController#handleHoldKey} 已经执行了
+     * {@code holdActive = false} 和 {@code exitTilt()}，全局据枪状态已清零。
+     * 本方法负责根据当前模式内部的"意图状态"恢复玩家想要的行为。
+     *
+     * <p><b>两个分支</b>：
+     * <ul>
+     *   <li>{@code zoomStageSelected == true}：玩家在据枪档按着 hold，
+     *       松开后应回到"据枪姿态"（如果右键还按着）——这是原有的行为</li>
+     *   <li>{@code zoomStageSelected == false}：玩家在普通倍率下按着右键瞄着，
+     *       中途按了 hold 进入据枪，松开 hold 后右键还按着 → 应重新开镜。
+     *       对应 {@link TiltController#restoreAim}——与
+     *       {@code DefaultTiltMode} 的 {@code mode == 0} 分支一致</li>
+     * </ul>
+     *
+     * <p><b>为什么用 {@link InputHelper#isPhysicalRightPressed} 而不是
+     * {@code op.isAim()} 判断</b>：aim 状态在 hold 按住期间被
+     * {@link TiltController#enterTilt} 和 {@code suppressAimIfTilting}
+     * 压制为 false，但玩家的物理右键可能仍按着。用户预期是"右键没松就恢复"，
+     * 物理状态才是正确的判据。
+     */
     @Override
     public void onHoldKeyReleased(LocalPlayer player) {
-        // 据枪档仍选中且右键仍按着 → 恢复据枪姿态
-        if (zoomStageSelected && InputHelper.isPhysicalRightPressed()) {
-            if (TiltController.isHoldingGun(player)) {
-                TiltController.enterTilt(false);
-            }
+        if (!InputHelper.isPhysicalRightPressed()) return;
+        if (!TiltController.isHoldingGun(player)) return;
+
+        if (zoomStageSelected) {
+            // 在据枪档 → 恢复据枪姿态
+            TiltController.enterTilt(false);
+        } else {
+            // 不在据枪档 → 恢复瞄准（与 DEFAULT 模式 mode=0 一致）
+            TiltController.restoreAim(player);
         }
     }
 
@@ -171,8 +210,8 @@ public final class ZoomStageTiltMode implements TiltMode {
         }
 
         // 情况 2：不在据枪档 → 必须处于最后一档
-        // FIX: 不再要求瞄准。机瞄 / 单档瞄具 / 多档瞄具的最后一档，
-        //      按 V 的语义就是"进入据枪档"，与是否开镜无关。
+        // 不再要求瞄准。机瞄 / 单档瞄具 / 多档瞄具的最后一档，
+        // 按 V 的语义就是"进入据枪档"，与是否开镜无关。
         if (!isAtLastZoomStage(player)) return false;
 
         enterZoomStage(player);
@@ -326,6 +365,9 @@ public final class ZoomStageTiltMode implements TiltMode {
      * {@code aim(false)}，而 TaCZ 服务端处理 {@code ClientMessagePlayerZoom}
      * 时要求玩家处于瞄准状态。因此在发包前必须临时进入瞄准态，
      * 否则包被服务端忽略，zoom 档位停留在最后一档。
+     *
+     * <p><b>竞态假设</b>：与 {@code ZoomKeyMixin} 相同的 aim→zoom→aim 同步序列。
+     * 见 {@code com.feima.btp.mixin.ZoomKeyMixin} 的类 Javadoc。
      */
     private void exitZoomStage(LocalPlayer player) {
         zoomStageSelected = false;

@@ -18,6 +18,8 @@
 
   "config.btp.disableVanillaCrouchTilt": "禁用原版蹲下據槍",
   "config.btp.disableVanillaCrouchTilt.desc": "禁用 TaCZ 原版蹲下據槍。",
+  "config.btp.forceTiltOnAllGuns": "強制所有槍械據槍",
+  "config.btp.forceTiltOnAllGuns.desc": "忽略槍械的 can_slide 屬性，據槍時強制斜握。（TaCZ 1.2.0 狙擊槍的 can_slide 為 false。）",
   "config.btp.breakSprint": "打斷疾跑",
   "config.btp.breakSprint.desc": "據槍時強制禁止疾跑。",
   "config.btp.tiltSpreadMultiplier": "據槍散佈倍率",
@@ -40,7 +42,9 @@
   "config.btp.tiltTriggerMode.DEFAULT": "預設（B 鍵切換）",
   "config.btp.tiltTriggerMode.LONG_PRESS": "長按右鍵",
   "config.btp.tiltTriggerMode.ZOOM_STAGE": "虛擬倍率檔",
-  "config.btp.tiltTriggerMode.NONE": "停用（僅 Hold 鍵）",
+  "config.btp.tiltTriggerMode.NONE": "停用",
+  "config.btp.enableHoldTilt": "啟用按住據槍鍵",
+  "config.btp.enableHoldTilt.desc": "啟用後按住 HOLD_TILT_KEY 即可據槍。關閉則停用該鍵。",
   "config.btp.interruptOnToggle": "打斷切換",
   "config.btp.interruptOnToggle.desc": "（預設）切換模式時立即停止當前動作。",
   "config.btp.showLongPressTiltMessages": "顯示右鍵據槍提示",
@@ -49,5 +53,6 @@
   "config.btp.longPressThreshold.desc": "（長按）右鍵長按判定閾值（毫秒）。",
 
   "config.btp.missing_cloth_config.title": "需要安裝 Cloth Config",
-  "config.btp.missing_cloth_config.message": "在遊戲內修改 BTP 設定需要安裝 Cloth Config。"
+  "config.btp.missing_cloth_config.message": "在遊戲內修改 BTP 設定需要安裝 Cloth Config。",
+  "message.btp.tacz_version_mismatch": "BTP 是針對 TaCZ 1.2.0 建構的，目前的 TaCZ 版本可能不相容。V 鍵相關功能（不開鏡轉換倍率、ZOOM_STAGE 模式）可能失效。"
 }

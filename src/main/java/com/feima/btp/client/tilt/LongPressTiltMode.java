@@ -26,6 +26,12 @@ import static com.feima.btp.client.BTPEventHandler.TOGGLE_TILT_KEY;
  * </ul>
  *
  * <p>Hold 键由 {@link TiltController} 独立处理，本类不参与。
+ *
+ * <p><b>定时器代际契约</b>：{@code tiltTimerGeneration} 是单调递增的计数器。
+ * 每次 press 都会递增并捕获当前值；lambda 在 {@code Minecraft.execute} 中
+ * 先校验 {@code gen == tiltTimerGeneration} 再执行。这防止了
+ * 「A 的定时器已进入主线程队列但未执行，玩家释放并重新按下 B」时，
+ * A 的 lambda 读到 {@code tiltTimerTask = B} 而误判自己就是 B 的场景。
  */
 public final class LongPressTiltMode implements TiltMode {
 
@@ -39,7 +45,11 @@ public final class LongPressTiltMode implements TiltMode {
     private int lastSelectedSlot = -1;
     private boolean initialized = false;
 
-    // volatile：SCHEDULER 线程会在阈值极短时于 schedule() 返回前观察到该字段
+    /**
+     * 定时器代际。{@code volatile} 保证 SCHEDULER 线程与主线程之间的可见性；
+     * 真正的正确性由「executor 里校验 gen」保证，而非字段本身。
+     */
+    private volatile long tiltTimerGeneration = 0;
     private volatile ScheduledFuture<?> tiltTimerTask = null;
 
     private LongPressTiltMode() {}
@@ -60,7 +70,6 @@ public final class LongPressTiltMode implements TiltMode {
 
     @Override
     public boolean onMouseInput(Minecraft mc, LocalPlayer player, int button, int action) {
-        // Hold 键激活期间，右键不接管
         if (TiltController.isHoldActive()) return false;
 
         if (button != GLFW.GLFW_MOUSE_BUTTON_RIGHT) return false;
@@ -84,14 +93,18 @@ public final class LongPressTiltMode implements TiltMode {
             cancelTiltTimer();
 
             int threshold = BTPConfig.longPressThreshold;
+            final long gen = ++tiltTimerGeneration;
             tiltTimerTask = TiltController.SCHEDULER.schedule(() -> {
                 Minecraft.getInstance().execute(() -> {
-                    ScheduledFuture<?> task = tiltTimerTask;
-                    if (task == null || task.isCancelled()
-                            || !rightPressed || rightLongPressTiltTriggered) {
+                    // 代际校验：如果 press 之后又发生了 cancel/新 press，直接退出。
+                    if (gen != tiltTimerGeneration) {
+                        return;
+                    }
+                    if (!rightPressed || rightLongPressTiltTriggered) {
                         return;
                     }
                     LocalPlayer currentPlayer = Minecraft.getInstance().player;
+                    if (currentPlayer == null) return;
                     if (TiltController.isHoldingGun(currentPlayer)) {
                         TiltController.cancelAim(currentPlayer);
                         TiltController.enterTilt(true);
@@ -135,7 +148,6 @@ public final class LongPressTiltMode implements TiltMode {
 
     @Override
     public void onClientTick(Minecraft mc, LocalPlayer player) {
-        // Hold 键激活期间跳过（但要保留定时器清理）
         if (TiltController.isHoldActive()) {
             cancelTiltTimer();
             while (TOGGLE_TILT_KEY.consumeClick()) {}
@@ -219,6 +231,8 @@ public final class LongPressTiltMode implements TiltMode {
     // ============================================================
 
     private void cancelTiltTimer() {
+        // 递增代际，让任何已进入主线程队列的旧 lambda 失效。
+        tiltTimerGeneration++;
         ScheduledFuture<?> task = tiltTimerTask;
         if (task != null && !task.isDone()) {
             task.cancel(false);

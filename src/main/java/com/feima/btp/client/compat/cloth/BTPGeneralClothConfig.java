@@ -14,6 +14,10 @@ public class BTPGeneralClothConfig {
                 .setDefaultValue(true).setTooltip(Component.translatable("config.btp.disableVanillaCrouchTilt.desc"))
                 .setSaveConsumer(BTPConfig.DISABLE_VANILLA_CROUCH_TILT::set).build());
 
+        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.btp.forceTiltOnAllGuns"), BTPConfig.FORCE_TILT_ON_ALL_GUNS.get())
+                .setDefaultValue(true).setTooltip(Component.translatable("config.btp.forceTiltOnAllGuns.desc"))
+                .setSaveConsumer(BTPConfig.FORCE_TILT_ON_ALL_GUNS::set).build());
+
         general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.btp.breakSprint"), BTPConfig.BREAK_SPRINT.get())
                 .setDefaultValue(true).setTooltip(Component.translatable("config.btp.breakSprint.desc"))
                 .setSaveConsumer(BTPConfig.BREAK_SPRINT::set).build());
@@ -37,6 +41,10 @@ public class BTPGeneralClothConfig {
         general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.btp.enableThirdPersonTiltAnimation"), BTPConfig.ENABLE_THIRD_PERSON_TILT_ANIMATION.get())
                 .setDefaultValue(true).setTooltip(Component.translatable("config.btp.enableThirdPersonTiltAnimation.desc"))
                 .setSaveConsumer(BTPConfig.ENABLE_THIRD_PERSON_TILT_ANIMATION::set).build());
+
+        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.btp.enableZoomWithoutAim"), BTPConfig.ENABLE_ZOOM_WITHOUT_AIM.get())
+                .setDefaultValue(true).setTooltip(Component.translatable("config.btp.enableZoomWithoutAim.desc"))
+                .setSaveConsumer(BTPConfig.ENABLE_ZOOM_WITHOUT_AIM::set).build());
 
         general.addEntry(entryBuilder.startIntField(Component.translatable("config.btp.tiltTransitionTimeMs"), BTPConfig.TILT_TRANSITION_TIME_MS.get())
                 .setMin(0).setMax(1000).setDefaultValue(250).setTooltip(Component.translatable("config.btp.tiltTransitionTimeMs.desc"))

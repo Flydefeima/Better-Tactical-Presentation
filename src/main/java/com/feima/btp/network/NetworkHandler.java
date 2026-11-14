@@ -1,44 +1,47 @@
 package com.feima.btp.network;
 
 import com.feima.btp.BTPMod;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.Connection;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
+/**
+ * 双端通用的网络通道注册。
+ *
+ * <p>本类不引用任何 {@code net.minecraft.client.*} 类——服务端会加载本类。
+ * 客户端专用的通道存在性检查请使用
+ * {@code com.feima.btp.client.compat.ClientNetworkHelper#isServerPresent()}。
+ *
+ * <p><b>版本兼容策略</b>：{@code mods.toml} 声明了
+ * {@code displayTest="IGNORE_ALL_VERSION"}——不同 BTP 版本可以连接。
+ * 为了避免"mod 列表显示可连接但网络握手失败"，此处放宽版本校验到
+ * 主版本号一致（{@code "1."} 前缀）。仅当协议格式发生不兼容变更时
+ * 才应提高 {@code PROTOCOL_VERSION} 的主版本号。
+ */
 public class NetworkHandler {
     private static final String PROTOCOL_VERSION = "1.0";
+    private static final String PROTOCOL_MAJOR_PREFIX = "1.";
+
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(new ResourceLocation(BTPMod.MOD_ID, "main"))
             .networkProtocolVersion(() -> PROTOCOL_VERSION)
-            .clientAcceptedVersions(PROTOCOL_VERSION::equals)
-            .serverAcceptedVersions(PROTOCOL_VERSION::equals)
+            .clientAcceptedVersions(NetworkHandler::isVersionCompatible)
+            .serverAcceptedVersions(NetworkHandler::isVersionCompatible)
             .simpleChannel();
 
     private static int id = 0;
+    private static boolean registered = false;
+
+    private static boolean isVersionCompatible(String remote) {
+        return remote != null && remote.startsWith(PROTOCOL_MAJOR_PREFIX);
+    }
 
     public static void register() {
+        if (registered) return;
+        registered = true;
         CHANNEL.registerMessage(id++, ServerboundTiltPacket.class,
                 ServerboundTiltPacket::encode, ServerboundTiltPacket::decode, ServerboundTiltPacket::handle);
         CHANNEL.registerMessage(id++, ClientboundTiltPacket.class,
                 ClientboundTiltPacket::encode, ClientboundTiltPacket::decode, ClientboundTiltPacket::handle);
-    }
-
-    /**
-     * 检查当前连接的服务端是否也装了 BTP。
-     *
-     * <p>BTP 是纯客户端模组，服务端可能没有安装。此时客户端的通道虽然注册了，
-     * 但服务端不会注册对应的 {@code btp:main} 通道，发送前先调用此方法判断，
-     * 避免无谓的发送与日志噪音。
-     *
-     * @return 服务端存在 BTP 通道时返回 true；未连接或服务端无 BTP 返回 false。
-     */
-    public static boolean isServerPresent() {
-        var listener = Minecraft.getInstance().getConnection();
-        if (listener == null) return false;
-        Connection connection = listener.getConnection();
-        if (connection == null) return false;
-        return CHANNEL.isRemotePresent(connection);
     }
 }

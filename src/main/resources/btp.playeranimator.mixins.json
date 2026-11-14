@@ -6,7 +6,8 @@
   "refmap": "btp.refmap.json",
   "mixins": [],
   "client": [
-    "PlayerAnimatorAssetAccessorMixin"
+    "PlayerAnimatorAssetAccessorMixin",
+    "LoopUpperMixin"
   ],
   "server": [],
   "injectors": {

@@ -79,10 +79,6 @@ public final class BTPEventHandler {
     public static void onPlayerLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         BTPTipsHelper.clearPendingErrors();
         TiltStateManager.clear();
-        // FIX: BTPAnimator 的字段/方法签名引用 dev.kosmx.playerAnim.* 类。
-        // 未装 PlayerAnimator 时 JVM 解析 BTPAnimator 会抛 NoClassDefFoundError。
-        // 与 BTPMod.onLoadComplete / performStartupChecks 的契约保持一致：
-        // 只有在 PlayerAnimator 加载时才允许触碰 BTPAnimator。
         if (BTPMod.isPlayerAnimatorLoaded) {
             BTPAnimator.resetState();
         }
@@ -95,8 +91,6 @@ public final class BTPEventHandler {
 
         if (BTPMod.isPlayerAnimatorLoaded) {
             try {
-                // AnimationRegistry.player 内部已做 containsKey 检查，
-                // 直接调用即可——file 缺失和 name 缺失会各自打 warn 日志。
                 boolean rifleMissing = AnimationRegistry.player(
                         TiltAnimNames.RIFLE_FILE, TiltAnimNames.RIFLE_LOOP) == null;
                 boolean pistolMissing = AnimationRegistry.player(
@@ -115,6 +109,26 @@ public final class BTPEventHandler {
             } catch (Exception e) {
                 BTPLog.LOGGER.warn("Failed to check TaczLabs compatibility during startup", e);
             }
+        }
+
+        checkTaczSignatureCompat();
+    }
+
+    private static void checkTaczSignatureCompat() {
+        try {
+            Class<?> zoomKey = Class.forName("com.tacz.guns.client.input.ZoomKey");
+            try {
+                zoomKey.getDeclaredMethod("onZoomPress");
+                BTPLog.LOGGER.info("[BTP] TaCZ ZoomKey.onZoomPress found — zoom mixin active.");
+            } catch (NoSuchMethodException e) {
+                BTPLog.LOGGER.warn("[BTP] TaCZ ZoomKey.onZoomPress NOT found. " +
+                        "BTP was built for TaCZ 1.2.0; current version may differ. " +
+                        "V-key features will be disabled.");
+                BTPTipsHelper.sendTaczVersionMismatchMessage();
+            }
+        } catch (ClassNotFoundException e) {
+            BTPLog.LOGGER.error("[BTP] TaCZ ZoomKey class entirely missing — cannot verify compatibility.");
+            BTPTipsHelper.sendTaczVersionMismatchMessage();
         }
     }
 }

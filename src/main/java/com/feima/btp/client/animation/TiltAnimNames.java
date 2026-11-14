@@ -10,6 +10,9 @@ import net.minecraft.world.item.ItemStack;
  * 集中管理 BTP 动画资源 ID 与动画名。
  * 动画名必须与 JSON 里的 {@code extraData.name} 严格一致——
  * TaCZ 的 {@code PlayerAnimatorAssetManager} 读取 extraData.name 来注册动画。
+ *
+ * <p>枪种类判断依赖枪械 JSON 的 {@code type} 字段（{@code "pistol"} 为手枪）。
+ * 第三方枪包若不遵循此约定，会把该枪当作步枪处理。
  */
 public final class TiltAnimNames {
     private TiltAnimNames() {}
@@ -24,10 +27,12 @@ public final class TiltAnimNames {
 
     public record GunKind(ResourceLocation fileId, String loop, String fire) {}
 
+    /** 预分配的静态常量，避免每次 {@link #forGun(ItemStack)} 分配 record。 */
+    public static final GunKind RIFLE  = new GunKind(RIFLE_FILE, RIFLE_LOOP, RIFLE_FIRE);
+    public static final GunKind PISTOL = new GunKind(PISTOL_FILE, PISTOL_LOOP, PISTOL_FIRE);
+
     public static GunKind forGun(ItemStack gunItem) {
-        return isPistol(gunItem)
-                ? new GunKind(PISTOL_FILE, PISTOL_LOOP, PISTOL_FIRE)
-                : new GunKind(RIFLE_FILE, RIFLE_LOOP, RIFLE_FIRE);
+        return isPistol(gunItem) ? PISTOL : RIFLE;
     }
 
     public static boolean isPistol(ItemStack gunItem) {

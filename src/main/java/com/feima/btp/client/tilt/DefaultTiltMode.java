@@ -21,6 +21,11 @@ import static com.feima.btp.client.BTPEventHandler.TOGGLE_TILT_KEY;
  * </ul>
  *
  * <p>Hold 键由 {@link TiltController} 独立处理，本类不参与。
+ *
+ * <p><b>关于 {@code forceStopAllActions}</b>：调用 {@link TiltController#forceReset()}
+ * 而非 {@link TiltController#exitTilt()}。后者在 {@code tilting==false} 时直接 return，
+ * 如果 TaCZ:Labs 快照存在但据枪状态已异常（比如 suppress 成功但 enterTilt 中途失败），
+ * 会留下准星永久消失。forceReset 无条件恢复。
  */
 public final class DefaultTiltMode implements TiltMode {
 
@@ -47,7 +52,6 @@ public final class DefaultTiltMode implements TiltMode {
 
     @Override
     public void onKeyInput(Minecraft mc, LocalPlayer player, int keyCode, int action) {
-        // B 键：仅 release 时切换
         if (keyCode != TOGGLE_TILT_KEY.getKey().getValue()) return;
         if (action != GLFW.GLFW_RELEASE) return;
         handleToggleKey(player);
@@ -55,12 +59,10 @@ public final class DefaultTiltMode implements TiltMode {
 
     @Override
     public boolean onMouseInput(Minecraft mc, LocalPlayer player, int button, int action) {
-        // Hold 键激活期间，右键不接管（交给 TaCZ 处理普通瞄准）
         if (TiltController.isHoldActive()) return false;
 
         if (button != GLFW.GLFW_MOUSE_BUTTON_RIGHT) return false;
 
-        // 抑制右键：吞掉事件直到物理释放
         if (suppressRightClick) {
             if (action == GLFW.GLFW_RELEASE) {
                 suppressRightClick = false;
@@ -70,7 +72,6 @@ public final class DefaultTiltMode implements TiltMode {
             return true;
         }
 
-        // 非持枪：清理残留
         if (!TiltController.isHoldingGun(player)) {
             if (rightPressed) {
                 forceStopAllActions(player);
@@ -80,13 +81,11 @@ public final class DefaultTiltMode implements TiltMode {
             return false;
         }
 
-        // mode = 0：右键完全交给 TaCZ
         if (mode == 0) {
             rightPressed = action == GLFW.GLFW_PRESS;
             return false;
         }
 
-        // mode = 1：右键控制据枪
         rightPressed = action == GLFW.GLFW_PRESS;
         if (rightPressed) {
             TiltController.enterTilt(true);
@@ -98,7 +97,6 @@ public final class DefaultTiltMode implements TiltMode {
 
     @Override
     public void onClientTick(Minecraft mc, LocalPlayer player) {
-        // Hold 键激活期间跳过
         if (TiltController.isHoldActive()) {
             while (TOGGLE_TILT_KEY.consumeClick()) {}
             while (HOLD_TILT_KEY.consumeClick()) {}
@@ -171,14 +169,28 @@ public final class DefaultTiltMode implements TiltMode {
         initialized = false;
     }
 
+    /**
+     * Hold 键释放后，根据右键物理状态和当前 mode 恢复据枪/瞄准。
+     *
+     * <p><b>为什么必须显式 {@link TiltController#restoreAim}</b>：
+     * {@code enterTilt} 在进入据枪时清了 {@code AimKey.AIM_KEY}。玩家一直按住
+     * 右键时没有新的 PRESS 事件，vanilla 的 {@code KeyMapping} 不会自动把
+     * {@code AimKey} 重新设为 {@code true}，TaCZ 的 {@code onAimHoldingPreInput}
+     * 无法自动开镜。必须显式调用 {@code restoreAim} 恢复 aim 状态。
+     *
+     * <p>「退出据枪后自动开镜」是 BTP 的<em>设计选择</em>，非 bug。
+     */
     @Override
     public void onHoldKeyReleased(LocalPlayer player) {
         rightPressed = InputHelper.isPhysicalRightPressed();
-        if (rightPressed && mode == 1 && TiltController.isHoldingGun(player)) {
-            // 右键仍按着，mode = 1 → 保持据枪
+        if (!rightPressed) return;
+        if (!TiltController.isHoldingGun(player)) return;
+
+        if (mode == 1) {
             TiltController.enterTilt(false);
+        } else {
+            TiltController.restoreAim(player);
         }
-        // mode = 0：让 TaCZ 处理
     }
 
     // ============================================================
@@ -199,10 +211,6 @@ public final class DefaultTiltMode implements TiltMode {
 
         if (rightPressed) {
             if (mode == 0 && newMode == 1) {
-                // 右键仍物理按着，从「瞄准模式」切到「据枪模式」：
-                // 进入据枪，同时设置 suppressRightClick。
-                // 否则下一 tick TaCZ 检测到物理右键按着会重新开启瞄准，
-                // 与 BTP 的据枪状态叠加。
                 TiltController.enterTilt(true);
                 suppressRightClick = true;
             } else if (mode == 1 && newMode == 0) {
@@ -231,6 +239,6 @@ public final class DefaultTiltMode implements TiltMode {
         rightPressed = false;
         TiltController.releaseUseInput();
         suppressRightClick = true;
-        TiltController.exitTilt();
+        TiltController.forceReset();
     }
 }

@@ -9,7 +9,7 @@ ext {
 }
 
 group = 'com.feima.btp'
-version = '2.0.0'
+version = '2.0.2'
 archivesBaseName = 'BetterTacticalPresentation'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -57,14 +57,10 @@ mixin {
 
 repositories {
     mavenCentral()
-    maven { url = uri('libs') }
     maven {
         name = "KosmX's maven"
         url = 'https://maven.kosmx.dev/'
     }
-    // ===== 新增：Modrinth Maven（用于 Cloth Config 等可选客户端依赖） =====
-    // exclusiveContent 保证只有 maven.modrinth 组的依赖走这个仓库，
-    // 避免污染其它依赖的解析路径。
     exclusiveContent {
         forRepository {
             maven {
@@ -72,7 +68,6 @@ repositories {
                 url = "https://api.modrinth.com/maven"
             }
         }
-        // ForgeGradle 需要保留这一行，让 fg.repository 也能访问该 group
         forRepositories(fg.repository)
         filter {
             includeGroup "maven.modrinth"
@@ -82,16 +77,12 @@ repositories {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    implementation fg.deobf('tacz:tacz:1.1.8-hotfix')
+
+    implementation fg.deobf(files('libs/tacz-1.2.0.jar'))
 
     compileOnly fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:1.0.2-rc1+1.20")
     runtimeOnly fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:1.0.2-rc1+1.20")
 
-    // ===== 新增：Cloth Config（可选客户端依赖，用于图形化配置界面） =====
-    // 与 playeranimator 采用相同的"编译期可见 + 本地开发可运行"模式：
-    //   compileOnly —— 编译 BTPClothConfigScreen / BTPClothConfigRegistry 时可见
-    //   runtimeOnly —— 本地开发环境能真正加载，以便测试配置界面
-    // 发布后是否必需由 mods.toml 的 mandatory=false 决定，与这里无关。
     compileOnly fg.deobf("maven.modrinth:9s6osm5g:t8TXrZvZ")
     runtimeOnly fg.deobf("maven.modrinth:9s6osm5g:t8TXrZvZ")
 

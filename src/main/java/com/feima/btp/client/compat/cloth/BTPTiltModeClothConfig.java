@@ -17,6 +17,10 @@ public class BTPTiltModeClothConfig {
                 .setTooltip(Component.translatable("config.btp.tiltTriggerMode.desc"))
                 .setSaveConsumer(BTPConfig.TILT_TRIGGER_MODE::set).build());
 
+        tiltMode.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.btp.enableHoldTilt"), BTPConfig.ENABLE_HOLD_TILT.get())
+                .setDefaultValue(true).setTooltip(Component.translatable("config.btp.enableHoldTilt.desc"))
+                .setSaveConsumer(BTPConfig.ENABLE_HOLD_TILT::set).build());
+
         tiltMode.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.btp.interruptOnToggle"), BTPConfig.INTERRUPT_ON_TOGGLE.get())
                 .setDefaultValue(false).setTooltip(Component.translatable("config.btp.interruptOnToggle.desc"))
                 .setSaveConsumer(BTPConfig.INTERRUPT_ON_TOGGLE::set).build());

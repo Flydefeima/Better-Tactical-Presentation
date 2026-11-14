@@ -1,4 +1,4 @@
-package com.feima.btp.mixin;
+package com.feima.btp.mixin.compat;
 
 import com.feima.btp.BTPMod;
 import com.feima.btp.client.animation.BTPAnimator;
@@ -29,6 +29,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  *
  * <p>不拦截 once 层——BTP 的倾斜 fire 动画与 TaCZ 的 once fire 动画分层共存，
  * 由优先级决定最终输出，无需干预。
+ *
+ * <p><b>配置归属</b>：本 mixin 目标 {@code AnimationManager} 在
+ * {@code com.tacz.guns.compat.playeranimator} 包下，引用 {@code dev.kosmx.playerAnim.*}。
+ * PlayerAnimator 缺失时类加载会抛 {@code NoClassDefFoundError}。因此本 mixin
+ * 必须注册在 {@code btp.playeranimator.mixins.json}（{@code required: false}）里，
+ * 不能放在主配置 {@code btp.mixins.json}（{@code required: true}）。
  */
 @Mixin(value = AnimationManager.class, remap = false)
 public class LoopUpperMixin {

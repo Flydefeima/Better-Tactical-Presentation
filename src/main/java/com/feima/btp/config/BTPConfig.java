@@ -7,11 +7,17 @@ import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
- * 只包含通用配置。
+ * 只包含客户端配置。
  *
  * <p><b>不要在这里引用任何 {@code net.minecraft.client.*} 或 TaCZ 客户端类</b>
  * ——服务端也会加载本类（用于 {@code FMLJavaModLoadingContext} 的事件订阅），
  * 引用客户端类会导致 NoClassDefFoundError。
+ *
+ * <p><b>专用服务器注意</b>：{@code ModConfig.Type.CLIENT} 在专用服务器上
+ * <em>不会</em>读取玩家配置文件，静态快照字段会停留在默认值。
+ * {@code tiltSpreadMultiplier} 因此不能直接被服务端 mixin 使用——
+ * 它通过 {@code ServerboundTiltPacket} 同步到服务端
+ * （见 {@code TiltStateStorage} 与 {@code GunSpreadMixin}）。
  */
 @Mod.EventBusSubscriber(modid = BTPMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class BTPConfig {
@@ -19,18 +25,19 @@ public class BTPConfig {
 
     // ===== general =====
     public static final ForgeConfigSpec.BooleanValue DISABLE_VANILLA_CROUCH_TILT;
+    public static final ForgeConfigSpec.BooleanValue FORCE_TILT_ON_ALL_GUNS;
     public static final ForgeConfigSpec.BooleanValue BREAK_SPRINT;
     public static final ForgeConfigSpec.DoubleValue TILT_SPREAD_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue COMPAT_TACZLABS_CROSSHAIR;
     public static final ForgeConfigSpec.BooleanValue RESET_TO_AIM_ON_ITEM_SWITCH;
     public static final ForgeConfigSpec.ConfigValue<String> TACTICAL_CROSSHAIR;
     public static final ForgeConfigSpec.BooleanValue ENABLE_THIRD_PERSON_TILT_ANIMATION;
-    // ① 字段声明
     public static final ForgeConfigSpec.BooleanValue ENABLE_ZOOM_WITHOUT_AIM;
     public static final ForgeConfigSpec.IntValue TILT_TRANSITION_TIME_MS;
 
     // ===== tilt mode =====
     public static final ForgeConfigSpec.EnumValue<TiltTriggerMode> TILT_TRIGGER_MODE;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_HOLD_TILT;
     public static final ForgeConfigSpec.BooleanValue INTERRUPT_ON_TOGGLE;
     public static final ForgeConfigSpec.BooleanValue SHOW_LONG_PRESS_TILT_MESSAGES;
     public static final ForgeConfigSpec.IntValue LONG_PRESS_THRESHOLD;
@@ -50,15 +57,30 @@ public class BTPConfig {
                 .translation("config.btp.disableVanillaCrouchTilt")
                 .define("disableVanillaCrouchTilt", true);
 
+        FORCE_TILT_ON_ALL_GUNS = builder
+                .comment("Ignore the gun's can_slide flag and always tilt while using BTP tilt.",
+                         "(TaCZ 1.2.0 sniper rifles set can_slide=false.)",
+                         "忽略枪械的 can_slide 属性，据枪时强制斜握。",
+                         "（TaCZ 1.2.0 狙击枪的 can_slide 为 false。）")
+                .translation("config.btp.forceTiltOnAllGuns")
+                .define("forceTiltOnAllGuns", true);
+
         BREAK_SPRINT = builder
-                .comment("Force-disable sprint while tilting.",
-                         "据枪时强制禁止疾跑。")
+                .comment("Force-disable sprint while tilting (client-side only).",
+                         "据枪时强制禁止疾跑（仅客户端阻断）。")
                 .translation("config.btp.breakSprint")
                 .define("breakSprint", true);
 
         TILT_SPREAD_MULTIPLIER = builder
                 .comment("Spread multiplier while tilting (0.0~2.0, default 0.3).",
-                         "据枪时的散布倍率（0.0~2.0，默认 0.3）。")
+                         "This value is sent to the server via BTP's network packet, so the",
+                         "server-side hit detection matches the client-side crosshair even on",
+                         "dedicated servers.",
+                         "If BTP is not installed on the server, the server's spread is unchanged.",
+                         "据枪时的散布倍率（0.0~2.0，默认 0.3）。",
+                         "该值会通过 BTP 网络包同步到服务端，因此专用服务器上服务端命中",
+                         "判定与客户端准星视觉保持一致。",
+                         "若服务端未安装 BTP，服务端散布保持不变。")
                 .translation("config.btp.tiltSpreadMultiplier")
                 .defineInRange("tiltSpreadMultiplier", 0.3, 0.0, 2.0);
 
@@ -86,7 +108,6 @@ public class BTPConfig {
                 .translation("config.btp.enableThirdPersonTiltAnimation")
                 .define("enableThirdPersonTiltAnimation", true);
 
-        // ② static 块中定义
         ENABLE_ZOOM_WITHOUT_AIM = builder
                 .comment("Allow TaCZ zoom switch (V key) while not aiming.",
                          "允许不开镜时切换倍率（V 键）。")
@@ -117,6 +138,17 @@ public class BTPConfig {
                 .translation("config.btp.tiltTriggerMode")
                 .defineEnum("tiltTriggerMode", TiltTriggerMode.DEFAULT);
 
+        ENABLE_HOLD_TILT = builder
+                .comment("Enable the hold-to-tilt key (HOLD_TILT_KEY in Controls settings).",
+                         "The key can be bound to either a keyboard key or a mouse button.",
+                         "Disable this to turn off the hold key entirely; other tilt trigger",
+                         "modes remain unaffected.",
+                         "启用按住据枪键（控制设置中的 HOLD_TILT_KEY）。",
+                         "该键可绑定到键盘按键或鼠标按钮。",
+                         "关闭后将完全禁用按住据枪键，其他据枪触发模式不受影响。")
+                .translation("config.btp.enableHoldTilt")
+                .define("enableHoldTilt", true);
+
         INTERRUPT_ON_TOGGLE = builder
                 .comment("(DEFAULT) Toggling instantly stops current action instead of auto-entering new mode.",
                          "（DEFAULT）切换时立即停止当前动作，而非自动进入新模式。")
@@ -142,18 +174,18 @@ public class BTPConfig {
 
     // ===== public 快照 =====
     public static boolean disableVanillaCrouchTilt = true;
+    public static boolean forceTiltOnAllGuns = true;
     public static boolean breakSprint = true;
     public static double tiltSpreadMultiplier = 0.3;
     public static boolean compatTaczLabsCrosshair = true;
     public static boolean resetToAimOnItemSwitch = true;
     public static String tacticalCrosshair = "DOT_1";
     public static boolean enableThirdPersonTiltAnimation = true;
-    // ③ 静态快照字段（ZoomKeyMixin 读取的就是这个）
     public static boolean enableZoomWithoutAim = true;
     public static int tiltTransitionTimeMs = 250;
 
-    /** 据枪触发模式（枚举）。Forge 保证该值始终是有效枚举常量。 */
     public static TiltTriggerMode tiltTriggerMode = TiltTriggerMode.DEFAULT;
+    public static boolean enableHoldTilt = true;
     public static boolean interruptOnToggle = false;
     public static boolean showLongPressTiltMessages = true;
     public static int longPressThreshold = 200;
@@ -161,30 +193,40 @@ public class BTPConfig {
     @SubscribeEvent
     public static void onConfigLoad(ModConfigEvent.Loading event) {
         if (event.getConfig().getSpec() == SPEC) {
-            reloadConfig();
+            reload();
         }
     }
 
     @SubscribeEvent
     public static void onConfigReload(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == SPEC) {
-            reloadConfig();
+            reload();
         }
     }
 
-    private static void reloadConfig() {
+    /**
+     * 从 {@link ForgeConfigSpec} 重新拉取所有值到静态快照字段。
+     *
+     * <p><b>为什么是 public</b>：{@code BTPMenuIntegration} 在 Cloth Config 的
+     * 保存回调里会主动调用一次。{@code ForgeConfigSpec.save()} 只写盘，不会
+     * 同步触发 {@code ModConfigEvent.Reloading}——后者由 {@code ConfigTracker}
+     * 的文件监视器异步检测（几十 tick 后）。这段窗口里若玩家立刻据枪，读到的
+     * 会是旧值。主动调用本方法消除该窗口，让"保存 → 生效"变成同步语义。
+     */
+    public static void reload() {
         disableVanillaCrouchTilt = DISABLE_VANILLA_CROUCH_TILT.get();
+        forceTiltOnAllGuns = FORCE_TILT_ON_ALL_GUNS.get();
         breakSprint = BREAK_SPRINT.get();
         tiltSpreadMultiplier = TILT_SPREAD_MULTIPLIER.get();
         compatTaczLabsCrosshair = COMPAT_TACZLABS_CROSSHAIR.get();
         resetToAimOnItemSwitch = RESET_TO_AIM_ON_ITEM_SWITCH.get();
         tacticalCrosshair = TACTICAL_CROSSHAIR.get();
         enableThirdPersonTiltAnimation = ENABLE_THIRD_PERSON_TILT_ANIMATION.get();
-        // ④ reloadConfig 中赋值
         enableZoomWithoutAim = ENABLE_ZOOM_WITHOUT_AIM.get();
         tiltTransitionTimeMs = TILT_TRANSITION_TIME_MS.get();
 
         tiltTriggerMode = TILT_TRIGGER_MODE.get();
+        enableHoldTilt = ENABLE_HOLD_TILT.get();
         interruptOnToggle = INTERRUPT_ON_TOGGLE.get();
         showLongPressTiltMessages = SHOW_LONG_PRESS_TILT_MESSAGES.get();
         longPressThreshold = LONG_PRESS_THRESHOLD.get();

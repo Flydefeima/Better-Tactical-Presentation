@@ -24,16 +24,19 @@ import javax.annotation.Nullable;
  *       而该方法只会在 {@code cloth_config} 已加载的 lambda 分支里被调用</li>
  * </ul>
  *
- * <p>与 TaCZ 的唯一差异：{@code setSavingRunnable(() -> BTPConfig.SPEC.save())}。
- * BTP 使用静态快照（{@code BTPConfig.breakSprint} 等），仅改内存不落盘
- * 不会触发 {@code ModConfigEvent.Reloading}，游戏内读到的将永远是旧值。
+ * <p><b>保存语义</b>：{@code setSavingRunnable} 同时执行
+ * {@code SPEC.save()} 和 {@code BTPConfig.reload()}。前者写盘，后者立即刷新
+ * 静态快照——不依赖 Forge 的异步文件监视器，消除"保存后短暂读到旧值"的窗口。
  */
 public class BTPMenuIntegration {
 
     public static ConfigBuilder getConfigBuilder() {
         ConfigBuilder root = ConfigBuilder.create()
                 .setTitle(Component.translatable("config.btp.title"))
-                .setSavingRunnable(() -> BTPConfig.SPEC.save());
+                .setSavingRunnable(() -> {
+                    BTPConfig.SPEC.save();
+                    BTPConfig.reload();
+                });
         root.setGlobalized(true);
         root.setGlobalizedExpanded(false);
         ConfigEntryBuilder entryBuilder = root.entryBuilder();

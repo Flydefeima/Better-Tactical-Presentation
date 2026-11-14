@@ -11,6 +11,7 @@ import com.tacz.guns.api.event.common.GunReloadEvent;
 import com.tacz.guns.api.event.common.GunShootEvent;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.client.input.AimKey;
+import com.tacz.guns.compat.playeranimator.PlayerAnimatorCompat;
 import dev.kosmx.playerAnim.api.layered.IAnimation;
 import dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer;
 import dev.kosmx.playerAnim.api.layered.ModifierLayer;
@@ -28,6 +29,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 public class BTPAnimator {
 
     private static final int BTP_LAYER_PRIORITY = 110;
@@ -39,12 +44,14 @@ public class BTPAnimator {
     private static final TiltAnimState STATE = new TiltAnimState();
 
     /**
-     * 本地玩家当前手持"枪的类型"。
+     * 远程玩家当前播放的枪种类缓存。
      *
-     * <p>这是判断是否需要重新加载据枪动画的关键——TaCZ 的所有枪械物品都是同一个
-     * Java 类（{@code ModernKineticGunItem}），仅凭 {@code ItemStack.getItem()}
-     * 无法区分"手枪"和"步枪"。必须通过 {@link TiltAnimNames#isPistol} 判断。
+     * <p>远程玩家的 loop 动画是循环的（永远 active），无法通过 {@code isActive()}
+     * 判断"是否需要切枪刷新"。用 kind 缓存做增量对比，切枪后才重新加载。
+     * 在 {@link #resetState()} 与玩家退出时清空。
      */
+    private static final Map<UUID, TiltAnimNames.GunKind> REMOTE_KINDS = new HashMap<>();
+
     private enum GunKindState { NONE, PISTOL, RIFLE }
 
     private static GunKindState lastGunKindState = GunKindState.NONE;
@@ -79,6 +86,7 @@ public class BTPAnimator {
         fireStartMs = 0L;
         TiltAdjust.setApplying(false);
         TiltAdjust.setUseComplexCorrection(false);
+        REMOTE_KINDS.clear();
     }
 
     @SubscribeEvent
@@ -107,6 +115,15 @@ public class BTPAnimator {
         ModifierLayer<IAnimation> layer = TiltLayerController.getLayer(player, BTP_LAYER);
         if (layer == null) return;
 
+        // 与 TaCZ 的 PlayerAnimatorCompat.canPlayAnimation 对齐：
+        // 游泳 / 爬梯 / 睡觉 / 滑翔时不播放任何 BTP 第三人称动画。
+        // 缺少此检查时，TaCZ 已停掉所有动画，但 BTP 层（priority 110）会继续
+        // 播放 tilt loop 覆盖 TaCZ 的空状态，导致视觉错乱。
+        if (!PlayerAnimatorCompat.canPlayAnimation(player)) {
+            hardClear(layer);
+            return;
+        }
+
         if (TiltController.isHoldingTiltAndAiming()) {
             hardClear(layer);
             return;
@@ -132,7 +149,6 @@ public class BTPAnimator {
             return;
         }
 
-        // 手枪 / 步枪 切换检测
         GunKindState currentKind = getGunKindState(player.getMainHandItem());
         if (currentKind != lastGunKindState) {
             GunKindState prevKind = lastGunKindState;
@@ -142,13 +158,10 @@ public class BTPAnimator {
             boolean isGun = currentKind != GunKindState.NONE;
 
             if (wasGun && isGun) {
-                // 枪 ↔ 枪：可能是手枪↔步枪，也可能是同类枪切换。
-                // 手枪↔步枪时动画文件名不同，必须重新加载，用 fade 平滑过渡。
                 if (TiltController.isTilting() || shouldPlayCrouchTilt(player)) {
                     reloadTiltAnimation(player, layer);
                 }
             } else if (isGun || wasGun) {
-                // 枪 ↔ 非枪
                 if (TiltController.isTilting() || shouldPlayCrouchTilt(player)) {
                     hardClear(layer);
                     BTPLog.LOGGER.debug("Gun state changed, BTP animation layer cleared.");
@@ -180,18 +193,6 @@ public class BTPAnimator {
         }
     }
 
-    /**
-     * 把当前层的动画平滑过渡到新枪的 loop，保持 TiltAdjust 状态和据枪状态不变。
-     *
-     * <p>用于手枪↔步枪切换的动画热替换，采用与进入据枪相同的 fade 时长和缓动曲线，
-     * 视觉上与正常的据枪进入/退出过渡一致。
-     *
-     * <p><b>FIRE 相位下不执行</b>：让 {@link #tickFireLifecycle} 自然走完 fire 动画，
-     * 再由它切到新枪的 loop——避免 fade 与 fire 生命周期互相打断。
-     *
-     * <p><b>第三人称动画关闭时不执行</b>：与 {@link TiltLayerController#enter} 保持
-     * 一致的开关语义，否则会绕过配置项强推动画。
-     */
     private static void reloadTiltAnimation(LocalPlayer player, ModifierLayer<IAnimation> layer) {
         if (STATE.isFiring()) return;
         if (!BTPConfig.enableThirdPersonTiltAnimation) return;
@@ -218,26 +219,51 @@ public class BTPAnimator {
 
     /**
      * 远程玩家：只做「同步状态 → loop/Identity」的切换。
-     * 不处理 fire、prone、切枪、换弹等本地瞬态动作。
+     *
+     * <p>切枪检测用 {@link #REMOTE_KINDS} 缓存当前播放的 kind，与最新
+     * {@link TiltAnimNames#forGun(ItemStack)} 比对。循环动画永远 active，
+     * 不能只靠 {@code isActive()} 判断是否需要重建 player。
      */
     private static void tickRemote(AbstractClientPlayer player) {
         ModifierLayer<IAnimation> layer = TiltLayerController.getLayer(player, BTP_LAYER);
         if (layer == null) return;
 
+        // 与 TaCZ 的 PlayerAnimatorCompat.canPlayAnimation 对齐：
+        // 游泳 / 爬梯 / 睡觉 / 滑翔时淡出到 Identity，避免 BTP 层覆盖 TaCZ 的空状态。
+        if (!PlayerAnimatorCompat.canPlayAnimation(player)) {
+            REMOTE_KINDS.remove(player.getUUID());
+            IAnimation current = layer.getAnimation();
+            if (current != null && current != IdentityAnimation.INSTANCE) {
+                AbstractFadeModifier fade = AbstractFadeModifier.standardFadeIn(
+                        TiltLayerController.fadeTicks(), Ease.INOUTSINE);
+                layer.replaceAnimationWithFade(fade, IdentityAnimation.INSTANCE);
+            }
+            return;
+        }
+
         boolean shouldTilt = TiltStateManager.isTilting(player);
         IAnimation current = layer.getAnimation();
 
         if (shouldTilt) {
-            if (current == null || current == IdentityAnimation.INSTANCE || !current.isActive()) {
-                TiltAnimNames.GunKind kind = TiltAnimNames.forGun(player.getMainHandItem());
-                KeyframeAnimationPlayer loopPlayer = AnimationRegistry.player(kind.fileId(), kind.loop());
+            TiltAnimNames.GunKind want = TiltAnimNames.forGun(player.getMainHandItem());
+            TiltAnimNames.GunKind have = REMOTE_KINDS.get(player.getUUID());
+
+            boolean needReload = current == null
+                    || current == IdentityAnimation.INSTANCE
+                    || !current.isActive()
+                    || want != have;
+
+            if (needReload) {
+                KeyframeAnimationPlayer loopPlayer = AnimationRegistry.player(want.fileId(), want.loop());
                 if (loopPlayer != null) {
                     AbstractFadeModifier fade = AbstractFadeModifier.standardFadeIn(
                             TiltLayerController.fadeTicks(), Ease.INOUTSINE);
                     layer.replaceAnimationWithFade(fade, loopPlayer);
+                    REMOTE_KINDS.put(player.getUUID(), want);
                 }
             }
         } else {
+            REMOTE_KINDS.remove(player.getUUID());
             if (current != null && current != IdentityAnimation.INSTANCE) {
                 AbstractFadeModifier fade = AbstractFadeModifier.standardFadeIn(
                         TiltLayerController.fadeTicks(), Ease.INOUTSINE);
@@ -304,6 +330,17 @@ public class BTPAnimator {
         fireStartMs = System.currentTimeMillis();
     }
 
+    /**
+     * 从 FIRE 切回 TILTING。
+     *
+     * <p><b>契约</b>：{@code markTilting()} 必须在 loop player 成功设置之后才执行。
+     * 如果 loop 资源缺失 / reload 中途（{@code AnimationRegistry.player} 返回 null），
+     * 层里仍持有失效的 fire 动画，而 STATE 已切到 TILTING——下一 tick
+     * {@code enter/exitOrIdle} 会因 {@code state.isTilting()} 跳过重新加载，
+     * 同时 {@code LoopUpperMixin} 因 {@code isFireAnimationActive()} 变 false 而
+     * 不再 cancel TaCZ 的 loop，出现视觉错乱且无法自愈。此时必须 {@link #hardClear}，
+     * 让下一 tick 从完整流程重新走。
+     */
     private static void tickFireLifecycle(LocalPlayer player, ModifierLayer<IAnimation> layer) {
         if (!STATE.isFiring()) return;
 
@@ -314,8 +351,10 @@ public class BTPAnimator {
         KeyframeAnimationPlayer loopPlayer = AnimationRegistry.player(kind.fileId(), kind.loop());
         if (loopPlayer != null) {
             layer.setAnimation(loopPlayer);
+            STATE.markTilting();
+        } else {
+            hardClear(layer);
         }
-        STATE.markTilting();
     }
 
     private static boolean shouldPlayCrouchTilt(LocalPlayer player) {

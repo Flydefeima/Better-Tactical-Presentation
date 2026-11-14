@@ -18,6 +18,8 @@
 
   "config.btp.disableVanillaCrouchTilt": "Disable Vanilla Crouch Tilt",
   "config.btp.disableVanillaCrouchTilt.desc": "Disable TaCZ vanilla crouch tilt.",
+  "config.btp.forceTiltOnAllGuns": "Force Tilt on All Guns",
+  "config.btp.forceTiltOnAllGuns.desc": "Ignore the gun's can_slide flag and always tilt while using BTP tilt. (TaCZ 1.2.0 sniper rifles set can_slide=false.)",
   "config.btp.breakSprint": "Break Sprint",
   "config.btp.breakSprint.desc": "Force-disable sprint while tilting.",
   "config.btp.tiltSpreadMultiplier": "Tilt Spread Multiplier",
@@ -40,7 +42,9 @@
   "config.btp.tiltTriggerMode.DEFAULT": "Default (B key toggles)",
   "config.btp.tiltTriggerMode.LONG_PRESS": "Long Press Right-Click",
   "config.btp.tiltTriggerMode.ZOOM_STAGE": "Virtual Zoom Stage",
-  "config.btp.tiltTriggerMode.NONE": "Disabled (Hold key only)",
+  "config.btp.tiltTriggerMode.NONE": "Disabled",
+  "config.btp.enableHoldTilt": "Enable Hold-to-Tilt Key",
+  "config.btp.enableHoldTilt.desc": "Hold HOLD_TILT_KEY to tilt. Disable to turn off the key entirely.",
   "config.btp.interruptOnToggle": "Interrupt on Toggle",
   "config.btp.interruptOnToggle.desc": "(DEFAULT) Instantly stops current action when toggling.",
   "config.btp.showLongPressTiltMessages": "Show Right-Click Tilt Messages",
@@ -49,5 +53,6 @@
   "config.btp.longPressThreshold.desc": "(LONG_PRESS) Right-click long press threshold in milliseconds.",
 
   "config.btp.missing_cloth_config.title": "Cloth Config Required",
-  "config.btp.missing_cloth_config.message": "To modify BTP settings in-game, you must install Cloth Config."
+  "config.btp.missing_cloth_config.message": "To modify BTP settings in-game, you must install Cloth Config.",
+  "message.btp.tacz_version_mismatch": "BTP was built for TaCZ 1.2.0. Current TaCZ version may be incompatible. Zoom-related features (V key without aim, ZOOM_STAGE mode) may not work."
 }
