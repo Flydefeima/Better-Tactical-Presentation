@@ -4,7 +4,9 @@
 [![Forge](https://img.shields.io/badge/Forge-47.x-orange.svg)](https://files.minecraftforge.net/)
 [![License](https://img.shields.io/badge/License-GPL--3.0-lightgrey.svg)](https://github.com/Flydefeima/Better-Tactical-Presentation/blob/main/LICENSE)
 
-[![Modrinth](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg)](https://modrinth.com/mod/btpmod)
+<p align="center">
+  <a href="https://modrinth.com/mod/btpmod"><img src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg" alt="Modrinth"></a>
+</p>
 
 > **Notice**: This document was created with the assistance of a translator. Please excuse any inaccuracies.
 
