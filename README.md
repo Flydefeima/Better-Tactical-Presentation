@@ -1,10 +1,9 @@
-# Better Tactical Presentation
-
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1-62B47A.svg)](https://www.minecraft.net/)
-[![Forge](https://img.shields.io/badge/Forge-47.x-orange.svg)](https://files.minecraftforge.net/)
-[![License](https://img.shields.io/badge/License-GPL--3.0-lightgrey.svg)](https://github.com/Flydefeima/Better-Tactical-Presentation/blob/main/LICENSE)
+<h1 align="center">Better Tactical Presentation</h1>
 
 <p align="center">
+  <a href="https://www.minecraft.net/"><img src="https://img.shields.io/badge/Minecraft-1.20.1-62B47A.svg" alt="Minecraft"></a>
+  <a href="https://files.minecraftforge.net/"><img src="https://img.shields.io/badge/Forge-47.x-orange.svg" alt="Forge"></a>
+  <a href="https://github.com/Flydefeima/Better-Tactical-Presentation/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-lightgrey.svg" alt="License"></a>
   <a href="https://modrinth.com/mod/btpmod"><img src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg" alt="Modrinth"></a>
 </p>
 
